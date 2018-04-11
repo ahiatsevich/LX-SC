@@ -52,6 +52,10 @@ contract Mock {
         return bytes32(_value);
     }
 
+    function bitAndBytes32ToBytes32(bytes32 _arg1, bytes32 _arg2) public pure returns (uint) {
+        return uint(_arg1) & uint(_arg2);
+    }
+
     function assertExpectations() public view {
         if (expectationsLeft() != 0 || callsCount != expectationsCount) {
             revert();

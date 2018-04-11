@@ -2,6 +2,7 @@ const BoardController = artifacts.require('BoardController')
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const ERC20Library = artifacts.require('./ERC20Library.sol');
 const FakeCoin = artifacts.require('./FakeCoin.sol');
+const Mock = artifacts.require('./Mock.sol');
 const JobController = artifacts.require('./JobController.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
@@ -151,6 +152,7 @@ contract('Integration tests (user stories)', (accounts) => {
         contracts.ratingLibrary = await RatingsAndReputationLibrary.deployed()
         contracts.jobController = await JobController.deployed()
         contracts.coin = await FakeCoin.deployed()
+        contracts.mock = await Mock.deployed()
         contracts.erc20Manager = await ERC20Library.deployed()
         contracts.paymentGateway = await PaymentGateway.deployed()
 
@@ -172,60 +174,176 @@ contract('Integration tests (user stories)', (accounts) => {
         await reverter.snapshot()
     })
 
-    beforeEach('setup board and jobs', async () => {
-        // board.id = await setupBoard(board)
+    context.only("as an admin", () => {
 
-        // await Promise.each(jobs, async (job, idx) => {
-        //     let jobId = await setupJob(job)
-        //     jobs[idx].id = jobId
+        describe.skip("I want to be able to setup other admins", () => {
 
-        //     await bindJobWithBoard(jobId, board.id)
-        // })
-    })
+            after(async () => {
+                await reverter.revert()
+            })
 
-    afterEach('revert', async () => {
-        // board.id = null
-        // jobs.forEach((e,idx) => jobs[idx].id = null)
+            it("`default` user should not be a root user", async () => {
+                assert.isFalse(await contracts.rolesLibrary.isUserRoot.call(users.default))
+            })
 
-        // await reverter.revert()
-    })
-
-    context("as an admin", () => {
-
-        describe("I want to be able to setup other admins", () => {
-
+            it("`root` user should be root", async () => {
+                assert.isTrue(await contracts.rolesLibrary.isUserRoot.call(users.root))
+            })
+            
+            it("should be able to set other user as an admin with OK code", async () => {
+                assert.equal((await contracts.ratingLibrary.setRootUser.call(users.default, true, { from: users.contractOwner, })))
+            })
         })
-
+        
         describe("I want to be able to create boards", () => {
+            
+            after(async () => {
+                await reverter.revert()
+            })
+            
+            it("`root` user should be root user", async () => {
+                assert.isTrue(await contracts.rolesLibrary.isUserRoot.call(users.root))
+            })
 
+            it("root user should have no role capabilities for `createBoard` method", async () => {
+                const createBoardData = contracts.boardController.contract.createBoard.getData(0,0,0,0,0).slice(0,10)
+                const roles = await contracts.rolesLibrary.getUserRoles.call(users.root)
+                const capabilities = await contracts.rolesLibrary.getCapabilityRoles.call(contracts.boardController.address, createBoardData)
+                
+                assert.equal((await contracts.mock.bitAndBytes32ToBytes32.call(roles, capabilities)).toNumber(), 0)
+            })
+
+            it("should be able to create a board with OK code", async () => {
+                assert.equal((await contracts.boardController.createBoard.call(board.name, board.description, board.tags, board.tagsArea, board.tagsCategory, { from: users.root, })).toNumber(), ErrorsScope.OK)
+            })
+
+            it("should be able to create a board", async () => {
+                const tx = await contracts.boardController.createBoard(board.name, board.description, board.tags, board.tagsArea, board.tagsCategory, { from: users.root, })
+                const createBoardEvent = (await eventsHelper.findEvent([contracts.boardController,], tx, 'BoardCreated'))[0]
+                assert.isDefined(createBoardEvent)
+            })
         })
 
         describe("I want to be able to close boards", () => {
+            let boardId
 
+            before(async () => {
+                const tx = await contracts.boardController.createBoard(board.name, board.description, board.tags, board.tagsArea, board.tagsCategory, { from: users.root, })
+                const createBoardEvent = (await eventsHelper.findEvent([contracts.boardController,], tx, 'BoardCreated'))[0]
+                boardId = createBoardEvent.args.boardId
+            })
+
+            after(async () => {
+                await reverter.revert()
+            })
+
+            it("`root` user should be root user", async () => {
+                assert.isTrue(await contracts.rolesLibrary.isUserRoot.call(users.root))
+            })
+
+            it("should be able to close board with OK code", async () => {
+                assert.equal((await contracts.boardController.closeBoard.call(boardId, { from: users.root, })).toNumber(), ErrorsScope.OK)
+            })
+
+            it("should be able to close board", async () => {
+                const tx = await contracts.boardController.closeBoard(boardId, { from: users.root, })
+                const closeBoardEvent = (await eventsHelper.findEvent([contracts.boardController,], tx, 'BoardClosed'))[0]
+                assert.isDefined(closeBoardEvent)
+            })
         })
 
-        describe("I want to be able to withdraw from balance holder", () => {
-
-        })
-
-        describe("I want to be able to add/remove token contracts to ERC20Manager", () => {
+        describe("I want to be able to add/remove token contracts to ERC20 library", () => {
+            
             describe("add", () => {
+                let otherContract
 
+                before(async () => {
+                    otherContract = await FakeCoin.new()
+                })
+
+                after(async () => {
+                    await reverter.revert()
+                })
+
+                it("`root` user should be root user", async () => {
+                    assert.isTrue(await contracts.rolesLibrary.isUserRoot.call(users.root))
+                })
+
+                it("should not contain other token in ERC20 library", async () => {
+                    assert.isFalse(await contracts.erc20Manager.includes.call(otherContract.address))
+                })
+
+                it("root user should be able to add token to ERC20 library with OK code", async () => {
+                    assert.equal((await contracts.erc20Manager.addContract.call(otherContract.address, { from: users.root, })).toNumber(), ErrorsScope.OK)
+                })
+
+                it("root user should be able to add token to ERC20 library", async () => {
+                    const tx = await contracts.erc20Manager.addContract(otherContract.address, { from: users.root, })
+                    const contractAddedEvent = (await eventsHelper.findEvent([contracts.erc20Manager,], tx, 'ContractAdded'))[0]
+                    assert.isDefined(contractAddedEvent)
+                })
             })
 
             describe("remove", () => {
+                let otherContract
 
+                before(async () => {
+                    otherContract = await FakeCoin.new()
+                    await contracts.erc20Manager.addContract(otherContract.address, { from: users.root, })
+                })
+
+                after(async () => {
+                    await reverter.revert()
+                })
+
+                it("`root` user should be root user", async () => {
+                    assert.isTrue(await contracts.rolesLibrary.isUserRoot.call(users.root))
+                })
+
+                it("should contain other token in ERC20 library", async () => {
+                    assert.isTrue(await contracts.erc20Manager.includes.call(otherContract.address))
+                })
+
+                it("root user should be able to remove token to ERC20 library with OK code", async () => {
+                    assert.equal((await contracts.erc20Manager.removeContract.call(otherContract.address, { from: users.root, })).toNumber(), ErrorsScope.OK)
+                })
+
+                it("root user should be able to remove token to ERC20 library", async () => {
+                    const tx = await contracts.erc20Manager.removeContract(otherContract.address, { from: users.root, })
+                    const contractRemovedEvent = (await eventsHelper.findEvent([contracts.erc20Manager,], tx, 'ContractRemoved'))[0]
+                    assert.isDefined(contractRemovedEvent)
+                })
             })
         })
 
         describe("I want to be able to set fee address destination in payment gateway", () => {
+            const feeAddress = "0xfeeaddfeeaddfeeaddfeeaddfeeaddfeeaddfeea"
 
+            after(async () => {
+                await reverter.revert()
+            })
+
+            it("`root` user should be root user", async () => {
+                assert.isTrue(await contracts.rolesLibrary.isUserRoot.call(users.root))
+            })
+
+            it("should have different fee address in payment gateway", async () => {
+                assert.notEqual((await contracts.paymentGateway.getFeeAddress.call()), feeAddress)
+            })
+
+            it("root user should be able to update fee address with OK code", async () => {
+                assert.equal((await contracts.paymentGateway.setFeeAddress.call(feeAddress, { from: users.root, })).toNumber(), ErrorsScope.OK)
+            })
+
+            it("root user should be able to update fee address", async () => {
+                await contracts.paymentGateway.setFeeAddress(feeAddress, { from: users.root, })
+
+                assert.equal((await contracts.paymentGateway.getFeeAddress.call()), feeAddress)
+            })
         })
     })
 
-    context("as a validator TODO", () => {
-        
-    })
+    context.skip("as a validator TODO", () => { })
 
     context('as a client', () => {
 
@@ -1061,6 +1179,17 @@ contract('Integration tests (user stories)', (accounts) => {
                 assert.equal(_worker, users.worker)
                 assert.equal(actualJobRating, expectedJobRating[users.client])
             })
+        })
+    })
+
+    context("as a user", () => {
+
+        describe("I want to be able to register in system", () => {
+
+        })
+
+        describe("I want to be able to restore access to lost account", () => {
+            
         })
     })
 
