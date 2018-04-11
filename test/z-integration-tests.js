@@ -10,6 +10,9 @@ const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Roles2Library = artifacts.require('./Roles2Library.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
+const UserFactory = artifacts.require('./UserFactory.sol');
+const Recovery = artifacts.require('./Recovery.sol');
+const User = artifacts.require('./User.sol');
 const RatingsAndReputationLibrary = artifacts.require('./RatingsAndReputationLibrary.sol');
 
 
@@ -36,7 +39,10 @@ contract('Integration tests (user stories)', (accounts) => {
     };
 
     const roles = {
-        moderator: 77
+        moderator: 77,
+        worker: 33,
+        client: 18,
+        validator: 4
     }
     const users = {
         default: accounts[0],
@@ -46,7 +52,7 @@ contract('Integration tests (user stories)', (accounts) => {
         client: accounts[2],
         worker: accounts[7],
         worker2: accounts[8],
-        recovery: "0xffffffffffffffffffffffffffffffffffffffff",
+        recovery: accounts[3],
     }
     var contracts = {}
 
@@ -149,6 +155,8 @@ contract('Integration tests (user stories)', (accounts) => {
         contracts.boardController = await BoardController.deployed()
         contracts.rolesLibrary = await Roles2Library.deployed()
         contracts.userLibrary = await UserLibrary.deployed()
+        contracts.userFactory = await UserFactory.deployed()
+        contracts.recovery = await Recovery.deployed()
         contracts.ratingLibrary = await RatingsAndReputationLibrary.deployed()
         contracts.jobController = await JobController.deployed()
         contracts.coin = await FakeCoin.deployed()
@@ -174,7 +182,7 @@ contract('Integration tests (user stories)', (accounts) => {
         await reverter.snapshot()
     })
 
-    context.only("as an admin", () => {
+    context("as an admin", () => {
 
         describe.skip("I want to be able to setup other admins", () => {
 
@@ -1183,13 +1191,127 @@ contract('Integration tests (user stories)', (accounts) => {
     })
 
     context("as a user", () => {
+        let userRecoveryAddress
+        const userMainAddress = users.worker
+        const userNewAddress = users.recovery
+        const userInfo = {
+            roles: [roles.worker,],
+            areas: 4,
+            categories: [1,],
+            skills: [1,],
+        }
+        let userContract
 
-        describe("I want to be able to register in system", () => {
+        before(async () => {
+            userRecoveryAddress = contracts.recovery.address
 
+            const createUserWithProxyAndRecoveryData = contracts.userFactory.contract.createUserWithProxyAndRecovery.getData(0x0, 0x0, [], 0, [], [])
+            await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.userFactory.address, createUserWithProxyAndRecoveryData, { from: users.contractOwner })
+
+            const recoverData = contracts.recovery.contract.recoverUser.getData(0x0, 0x0)
+            await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.recovery.address, recoverData, { from: users.contractOwner })
+        })
+       
+        after(async () => {
+            await reverter.revert()
         })
 
-        describe("I want to be able to restore access to lost account", () => {
+        describe("I want to be able to register in system", () => {
             
+            it("user should not be able to register itself with UNAUTHORIZED code", async () => {
+                assert.equal((await contracts.userFactory.createUserWithProxyAndRecovery.call(
+                    userMainAddress, 
+                    userRecoveryAddress, 
+                    userInfo.roles, 
+                    userInfo.areas, 
+                    userInfo.categories,
+                    userInfo.skills,
+                    { from: userMainAddress, }
+                )).toNumber(), ErrorsScope.UNAUTHORIZED)
+            })
+
+            it("moderator should moderate user's data and create user if all is good with OK code", async () => {
+                assert.equal((await contracts.userFactory.createUserWithProxyAndRecovery.call(
+                    userMainAddress, 
+                    userRecoveryAddress, 
+                    userInfo.roles, 
+                    userInfo.areas, 
+                    userInfo.categories,
+                    userInfo.skills,
+                    { from: users.moderator, }
+                )).toNumber(), ErrorsScope.OK)
+            })
+
+            it("moderator should moderate user's data and create user if all is good", async () => {
+                const tx = await contracts.userFactory.createUserWithProxyAndRecovery(
+                    userMainAddress, 
+                    userRecoveryAddress, 
+                    userInfo.roles, 
+                    userInfo.areas, 
+                    userInfo.categories,
+                    userInfo.skills,
+                    { from: users.moderator, }
+                )
+                const userCreatedEvent = (await eventsHelper.findEvent([contracts.userFactory,], tx, "UserCreated"))[0]
+                assert.isDefined(userCreatedEvent)
+
+                userContract = await User.at(userCreatedEvent.args.user)
+            })
+        })
+
+        describe("I want to be able to restore access to the lost account", () => {
+
+            it("user should not be able to restore by himself with UNAUTHORIZED code", async () => {
+                assert.equal((await contracts.recovery.recoverUser.call(userContract.address, userNewAddress, { from: userMainAddress, })).toNumber(), ErrorsScope.UNAUTHORIZED)
+            })
+            
+            it("moderator should be able to restore user with new address with OK code", async () => {
+                assert.equal((await contracts.recovery.recoverUser.call(userContract.address, userNewAddress, { from: users.moderator, })).toNumber(), ErrorsScope.OK)
+            })
+            
+            it("moderator should be able to restore user with new address", async () => {
+                const tx = await contracts.recovery.recoverUser(userContract.address, userNewAddress, { from: users.moderator, })
+                const userRecoveredEvent = (await eventsHelper.findEvent([contracts.recovery,], tx, "UserRecovered"))[0]
+                assert.isDefined(userRecoveredEvent)
+            })
+
+            it("user should have new contract owner", async () => {
+                assert.equal(await userContract.contractOwner.call(), userNewAddress)
+            })
+        })
+
+        describe("I want to change recovery address", async () => {
+
+            it("new address is current user", async () => {
+                assert.equal(await userContract.contractOwner.call(), userNewAddress)
+            })
+
+            it("user should be able to change recovery address with OK code", async () => {
+                assert.equal((await userContract.setRecoveryContract.call(users.moderator, { from: userNewAddress, })).toNumber(), ErrorsScope.OK)
+            })
+
+            it("user should be able to change recovery address", async () => {
+                await userContract.setRecoveryContract(users.moderator, { from: userNewAddress, })
+            })
+
+            it("should THROW recovering with old contract with UNAUTHORIZED code", async () => {
+                try {
+                    await contracts.recovery.recoverUser.call(userContract.address, userNewAddress, { from: users.moderator, })
+                    assert(false)
+                }
+                catch (e) {
+                    assert(true)
+                }
+            })
+
+            it("should be able to recover by the new recovery address with OK code", async () => {
+                assert.equal((await userContract.recoverUser.call(userMainAddress, { from: users.moderator, })).toNumber(), ErrorsScope.OK)
+            })
+            
+            it("should be able to recover by the new recovery address", async () => {
+                await userContract.recoverUser(userMainAddress, { from: users.moderator, })
+                assert.equal(await userContract.contractOwner.call(), userMainAddress)
+            })
         })
     })
 
