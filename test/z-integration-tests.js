@@ -83,9 +83,30 @@ contract('Integration tests (user stories)', (accounts) => {
         {
             id: null,
             area: 4,
-            category: 4,
+            category:4,
             skills: 4,
             details: '0x00ee00ee00ee00ee00ee'
+        },
+        {
+            id: null,
+            area: 16,
+            category: 16,
+            skills: 32,
+            details: '0x00ff00ff00ff00ff00ff'
+        },
+        {
+            id: null,
+            area: 4,
+            category: 16,
+            skills: 4,
+            details: '0x00fe00fe00fe00fe00fe'
+        },
+        {
+            id: null,
+            area: 16,
+            category: 4,
+            skills: 4,
+            details: '0x00fe00fe00fe00fe00fe'
         },
     ]
 
@@ -1186,6 +1207,64 @@ contract('Integration tests (user stories)', (accounts) => {
                 let [ _worker, actualJobRating, ] = await contracts.ratingLibrary.getJobRating.call(users.client, job.id)
                 assert.equal(_worker, users.worker)
                 assert.equal(actualJobRating, expectedJobRating[users.client])
+            })
+        })
+
+        describe("I cannot post a job offer if I does not have enough skills", () => {
+            let applicableJob
+            var notApplicableJob
+            
+            
+            before(async () => {
+                await setupBoardWithJobs()
+                applicableJob = jobs[0]
+
+                await setupWorker(applicableJob, users.worker)
+            })
+
+            after(async () => {
+                cleanUpBoards()
+                await reverter.revert()
+            })
+
+            describe("match all skills", async () => {
+                
+                it("should be able to post an offer for a job if have enough skill with OK code", async () => {
+                    assert.equal((await contracts.jobController.postJobOffer.call(applicableJob.id, contracts.coin.address, 200, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.OK)
+                })
+            })
+
+            describe("no areas", async () => {
+                
+                before(async () => {
+                    notApplicableJob = jobs[5]
+                })
+    
+                it("should not be able to post an offer for a job if does not have enough skills for it with JOB_CONTROLLER_INVALID_SKILLS code", async () => {
+                    assert.equal((await contracts.jobController.postJobOffer.call(notApplicableJob.id, contracts.coin.address, 200, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.JOB_CONTROLLER_INVALID_SKILLS)
+                })
+            })
+            
+            describe("no categories", async () => {
+                
+                before(async () => {
+                    notApplicableJob = jobs[4]
+                })
+    
+                it("should not be able to post an offer for a job if does not have enough skills for it with JOB_CONTROLLER_INVALID_SKILLS code", async () => {
+                    assert.equal((await contracts.jobController.postJobOffer.call(notApplicableJob.id, contracts.coin.address, 200, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.JOB_CONTROLLER_INVALID_SKILLS)
+                })
+            })
+            
+            describe("no skills", async () => {
+                
+                before(async () => {
+                    notApplicableJob = jobs[1]
+                })
+    
+                it("should not be able to post an offer for a job if does not have enough skills for it with JOB_CONTROLLER_INVALID_SKILLS code", async () => {
+                    assert.equal((await contracts.jobController.postJobOffer.call(notApplicableJob.id, contracts.coin.address, 200, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.JOB_CONTROLLER_INVALID_SKILLS)
+                })
             })
         })
     })
