@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 
 import './adapters/MultiEventsHistoryAdapter.sol';
@@ -61,9 +61,9 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     StorageInterface.AddressUIntUIntMapping skillCategories;
     StorageInterface.AddressUIntUIntUIntMapping skills;
 
-    function UserLibrary(
-        Storage _store, 
-        bytes32 _crate, 
+    constructor(
+        Storage _store,
+        bytes32 _crate,
         address _roles2Library
     )
     StorageAdapter(_store, _crate)
@@ -83,12 +83,12 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     }
 
     function getAreaInfo(
-        address _user, 
+        address _user,
         uint _area
     )
     singleOddFlag(_area)
     public view
-    returns (bool partialArea, bool fullArea) 
+    returns (bool partialArea, bool fullArea)
     {
         uint areas = store.get(skillAreas, _user);
         return (_hasFlag(areas, _area), _hasFlag(areas, _area << 1));
@@ -101,9 +101,11 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     function getCategoryInfo(address _user, uint _area, uint _category)
     singleOddFlag(_category)
     public view
-    returns (bool partialCategory, bool fullCategory) 
+    returns (bool partialCategory, bool fullCategory)
     {
-        var (partialArea, fullArea) = getAreaInfo(_user, _area);
+        bool partialArea;
+        bool fullArea;
+        (partialArea, fullArea) = getAreaInfo(_user, _area);
         if (!partialArea) {
             return (false, false);
         }
@@ -120,46 +122,48 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     }
 
     function hasSkill(
-        address _user, 
-        uint _area, 
-        uint _category, 
+        address _user,
+        uint _area,
+        uint _category,
         uint _skill
-    ) 
-    singleFlag(_skill) 
-    public view 
-    returns (bool) 
+    )
+    singleFlag(_skill)
+    public view
+    returns (bool)
     {
         return hasSkills(_user, _area, _category, _skill);
     }
 
     function hasSkills(
-        address _user, 
-        uint _area, 
-        uint _category, 
+        address _user,
+        uint _area,
+        uint _category,
         uint _skills
-    ) 
-    public view 
-    returns (bool) 
+    )
+    public view
+    returns (bool)
     {
-        var (partialCategory, fullCategory) = getCategoryInfo(_user, _area, _category);
+        bool partialCategory;
+        bool fullCategory;
+        (partialCategory, fullCategory) = getCategoryInfo(_user, _area, _category);
         if (!partialCategory) {
             return false;
         }
         if (fullCategory) {
             return true;
         }
-        
+
         uint userSkills = store.get(skills, _user, _area, _category);
         return _hasFlags(userSkills, _skills);
     }
 
     // If some area of category is full, then we are not looking into it cause observer can safely
     // assume that everything inside is filled.
-    function getUserSkills(address _user) 
-    public view 
+    function getUserSkills(address _user)
+    public view
     returns (
-        uint areas, 
-        uint[] _categories, 
+        uint areas,
+        uint[] _categories,
         uint[] _skills
     ) {
         _categories = new uint[](2**7);
@@ -185,13 +189,13 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     }
 
     function setAreas(
-        address _user, 
+        address _user,
         uint _areas
     )
     auth
     ifEvenThenOddTooFlags(_areas)
     public
-    returns (uint) 
+    returns (uint)
     {
         for (uint area = 1; area != 0; area = area << 2) {
             if (_isFullOrNull(_areas, area)) {
@@ -208,8 +212,8 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     }
 
     function setCategories(
-        address _user, 
-        uint _area, 
+        address _user,
+        uint _area,
         uint _categories
     )
     auth
@@ -217,10 +221,10 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     ifEvenThenOddTooFlags(_categories)
     hasFlags(_categories)
     public
-    returns (uint) 
+    returns (uint)
     {
         _addArea(_user, _area);
-        
+
         for (uint category = 1; category != 0; category = category << 2) {
             if (_isFullOrNull(_categories, category)) {
                 continue;
@@ -236,9 +240,9 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     }
 
     function setSkills(
-        address _user, 
-        uint _area, 
-        uint _category, 
+        address _user,
+        uint _area,
+        uint _category,
         uint _skills
     )
     auth
@@ -263,23 +267,23 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     }
 
     function _setMany(
-        address _user, 
-        uint _areas, 
-        uint[] _categories, 
-        uint[] _skills, 
+        address _user,
+        uint _areas,
+        uint[] _categories,
+        uint[] _skills,
         bool _overwrite
     )
     internal
-    returns (uint) 
+    returns (uint)
     {
         uint categoriesCounter = 0;
         uint skillsCounter = 0;
         if (!_ifEvenThenOddTooFlags(_areas)) {
             return _emitErrorCode(USER_LIBRARY_INVALID_AREA);
         }
-        
+
         _setAreas(_user, _overwrite ? _areas : (store.get(skillAreas, _user) | _areas));
-        
+
         for (uint area = 1; area != 0; area = area << 2) {
             if (_isFullOrNull(_areas, area)) {
                 // Nothing should be put inside full or empty area.
@@ -291,7 +295,7 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
 
             // Set categories for current partial area.
             _setCategories(_user, area, _overwrite ? _categories[categoriesCounter] : (store.get(skillCategories, _user, area) | _categories[categoriesCounter]));
-            
+
             for (uint category = 1; category != 0; category = category << 2) {
                 if (_isFullOrNull(_categories[categoriesCounter], category)) {
                     // Nothing should be put inside full or empty category.
@@ -352,15 +356,15 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     }
 
     function emitSkillAreasSet(address _user, uint _areas) public {
-        SkillAreasSet(_self(), _user, _areas);
+        emit SkillAreasSet(_self(), _user, _areas);
     }
 
     function emitSkillCategoriesSet(address _user, uint _area, uint _categories) public {
-        SkillCategoriesSet(_self(), _user, _area, _categories);
+        emit SkillCategoriesSet(_self(), _user, _area, _categories);
     }
 
     function emitSkillsSet(address _user, uint _area, uint _category, uint _skills) public {
-        SkillsSet(_self(), _user, _area, _category, _skills);
+        emit SkillsSet(_self(), _user, _area, _category, _skills);
     }
 
 }

@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.23;
 
 
 import '../StorageInterface.sol';
@@ -15,7 +15,7 @@ contract StorageAdapter {
 
     StorageInterface.Config store;
 
-    function StorageAdapter(Storage _store, bytes32 _crate) public {
+    constructor(Storage _store, bytes32 _crate) public {
         store.init(_store, _crate);
     }
 }

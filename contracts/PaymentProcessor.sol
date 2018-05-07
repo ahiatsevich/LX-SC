@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 import './adapters/Roles2LibraryAdapter.sol';
 
@@ -39,7 +39,7 @@ contract PaymentProcessor is Roles2LibraryAdapter {
         }
     }
 
-    function PaymentProcessor(address _roles2Library) public Roles2LibraryAdapter(_roles2Library) {}
+    constructor(address _roles2Library) public Roles2LibraryAdapter(_roles2Library) {}
 
 
     // Only contract owner

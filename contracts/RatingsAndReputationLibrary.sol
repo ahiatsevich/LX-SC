@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 
 import './adapters/MultiEventsHistoryAdapter.sol';
@@ -93,7 +93,8 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     modifier canSetJobRating(uint _jobId, address _to) {
-        var (, rating) = store.get(jobRatingsGiven, _to, _jobId);
+        uint rating;
+        (, rating) = store.get(jobRatingsGiven, _to, _jobId);
         if (rating > 0) {
             _emitErrorCode(RATING_AND_REPUTATION_RATING_IS_ALREADY_SET);
             assembly {
@@ -154,9 +155,9 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
       _;
     }
 
-    function RatingsAndReputationLibrary(
-		Storage _store, 
-		bytes32 _crate, 
+    constructor(
+		Storage _store,
+		bytes32 _crate,
 		address _roles2Library
 	)
 	StorageAdapter(_store, _crate)
@@ -211,22 +212,22 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     function setJobRating(
-		address _to, 
-		uint8 _rating, 
+		address _to,
+		uint8 _rating,
 		uint _jobId
 	)
 	validRating(_rating)
 	canSetRating(_jobId)
 	canSetJobRating(_jobId, _to)
 	public
-    returns (uint) 
+    returns (uint)
 	{
         if (boardController.getUserStatus(boardController.getJobsBoard(_jobId), msg.sender) != true) {
           return _emitErrorCode(RATING_AND_REPUTATION_WORKER_IS_NOT_ACTIVE);
         } //If use this check in modifier, then will be "stack to deep" error
-        
+
 		store.set(jobRatingsGiven, _to, _jobId, msg.sender, _rating);
-        
+
 		_emitJobRatingGiven(msg.sender, _to, _jobId, _rating);
         return OK;
     }
@@ -235,13 +236,13 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     // BOARD RATING
 
     function setBoardRating(
-		uint _to, 
+		uint _to,
 		uint8 _rating
 	)
 	validRating(_rating)
 	onlyBoardMember(_to, msg.sender)
 	public
-    returns (uint) 
+    returns (uint)
 	{
         store.set(boardRating, msg.sender, _to, _rating);
         _emitBoardRatingGiven(msg.sender, _to, _rating);
@@ -256,11 +257,11 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     // SKILL RATING
 
     function rateWorkerSkills(
-		uint _jobId, 
-		address _to, 
-		uint _area, 
-		uint _category, 
-		uint[] _skills, 
+		uint _jobId,
+		address _to,
+		uint _area,
+		uint _category,
+		uint[] _skills,
 		uint8[] _ratings
 	)
 	singleOddFlag(_area)
@@ -268,7 +269,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
 	canSetRating(_jobId)
 	canSetSkillRating(_jobId, _to)
 	public
-    returns (uint) 
+    returns (uint)
 	{
         if (!_checkAreaAndCategory(_jobId, _area, _category)) {
             return _emitErrorCode(RATING_AND_REPUTATION_INVALID_AREA_OR_CATEGORY);
@@ -288,11 +289,11 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     function _checkSetSkill(
-		uint _jobId, 
-		address _to, 
-		uint8 _rating, 
-		uint _area, 
-		uint _category, 
+		uint _jobId,
+		address _to,
+		uint8 _rating,
+		uint _area,
+		uint _category,
 		uint _skill
 	)
     internal
@@ -307,14 +308,14 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     function getSkillRating(
-		address _to, 
-		uint _area, 
-		uint _category, 
-		uint _skill, 
+		address _to,
+		uint _area,
+		uint _category,
+		uint _skill,
 		uint _jobId
 	)
 	public view
-    returns (address, uint8) 
+    returns (address, uint8)
 	{
         return store.get(skillRatingsGiven, _to, _jobId, _area, _category, _skill);
     }
@@ -437,31 +438,31 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     function emitUserRatingGiven(address _rater, address _to, uint _rating) public {
-        UserRatingGiven(_self(), _rater, _to, _rating);
+        emit UserRatingGiven(_self(), _rater, _to, _rating);
     }
 
     function emitBoardRatingGiven(address _rater, uint _to, uint8 _rating) public {
-        BoardRatingGiven(_self(), _rater, _to, _rating);
+        emit BoardRatingGiven(_self(), _rater, _to, _rating);
     }
 
     function emitJobRatingGiven(address _rater, address _to, uint _jobId, uint8 _rating) public {
-        JobRatingGiven(_self(), _rater, _to, _rating, _jobId);
+        emit JobRatingGiven(_self(), _rater, _to, _rating, _jobId);
     }
 
     function emitSkillRatingGiven(address _rater, address _to, uint8 _rating, uint _area, uint _category, uint _skill, uint _jobId) public {
-        SkillRatingGiven(_self(), _rater, _to, _rating, _area, _category, _skill, _jobId);
+        emit SkillRatingGiven(_self(), _rater, _to, _rating, _area, _category, _skill, _jobId);
     }
 
     function emitAreaEvaluated(address _rater, address _to, uint8 _rating, uint _area) public {
-        AreaEvaluated(_self(), _rater, _to, _rating, _area);
+        emit AreaEvaluated(_self(), _rater, _to, _rating, _area);
     }
 
     function emitCategoryEvaluated(address _rater, address _to, uint8 _rating, uint _area, uint _category) public {
-        CategoryEvaluated(_self(), _rater, _to, _rating, _area, _category);
+        emit CategoryEvaluated(_self(), _rater, _to, _rating, _area, _category);
     }
 
     function emitSkillEvaluated(address _rater, address _to, uint8 _rating, uint _area, uint _category, uint _skill) public {
-        SkillEvaluated(_self(), _rater, _to, _rating, _area, _category, _skill);
+        emit SkillEvaluated(_self(), _rater, _to, _rating, _area, _category, _skill);
     }
 
     function _emitUserRatingGiven(address _rater, address _to, uint _rating) internal {
@@ -493,7 +494,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     // HELPERS
-    
+
     function _validRating(uint8 _rating) internal pure returns (bool) {
         return _rating > 0 && _rating <= 10;
     }

@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 import '../adapters/StorageAdapter.sol';
 
@@ -19,7 +19,7 @@ contract StorageTester is StorageAdapter {
     StorageInterface.Set setVar;
     StorageInterface.AddressesSet addressesSetVar;
 
-    function StorageTester(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) public {
+    constructor(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) public {
         reinit();
     }
 

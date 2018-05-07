@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.23;
 
 contract ERC20Interface {
     event Transfer(address indexed from, address indexed to, uint256 value);
