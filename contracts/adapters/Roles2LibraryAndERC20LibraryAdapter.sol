@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 
 import './Roles2LibraryAdapter.sol';
@@ -31,7 +31,7 @@ contract Roles2LibraryAndERC20LibraryAdapter is Roles2LibraryAdapter {
         _;
     }
 
-    function Roles2LibraryAndERC20LibraryAdapter(
+    constructor(
         address _roles2Library,
         address _erc20Library
     )

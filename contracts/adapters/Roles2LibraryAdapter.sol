@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 
 contract Roles2LibraryInterface {
@@ -23,13 +23,13 @@ contract Roles2LibraryAdapter {
 
     modifier auth {
         if (!_isAuthorized(msg.sender, msg.sig)) {
-            AuthFailedError(this, msg.sender, msg.sig);
+            emit AuthFailedError(this, msg.sender, msg.sig);
             return;
         }
         _;
     }
 
-    function Roles2LibraryAdapter(address _roles2Library) public {
+    constructor(address _roles2Library) public {
         roles2Library = Roles2LibraryInterface(_roles2Library);
     }
 
@@ -45,7 +45,7 @@ contract Roles2LibraryAdapter {
         if (address(roles2Library) == 0) {
             return false;
         }
-        
+
         return roles2Library.canCall(_src, this, _sig);
     }
 }

@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 
 import './adapters/MultiEventsHistoryAdapter.sol';
@@ -108,7 +108,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         _;
     }
 
-    function JobController(
+    constructor(
         Storage _store,
         bytes32 _crate,
         address _roles2Library,
@@ -584,43 +584,43 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     )
     public
     {
-        JobPosted(_self(), _jobId, _client, _skillsArea, _skillsCategory, _skills, _detailsIPFSHash, _bindStatus);
+        emit JobPosted(_self(), _jobId, _client, _skillsArea, _skillsCategory, _skills, _detailsIPFSHash, _bindStatus);
     }
 
     function emitJobOfferPosted(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) public {
-        JobOfferPosted(_self(), _jobId, _worker, _rate, _estimate, _ontop);
+        emit JobOfferPosted(_self(), _jobId, _worker, _rate, _estimate, _ontop);
     }
 
     function emitJobOfferAccepted(uint _jobId, address _worker) public {
-        JobOfferAccepted(_self(), _jobId, _worker);
+        emit JobOfferAccepted(_self(), _jobId, _worker);
     }
 
     function emitWorkStarted(uint _jobId, uint _at) public {
-        WorkStarted(_self(), _jobId, _at);
+        emit WorkStarted(_self(), _jobId, _at);
     }
 
     function emitWorkPaused(uint _jobId, uint _at) public {
-        WorkPaused(_self(), _jobId, _at);
+        emit WorkPaused(_self(), _jobId, _at);
     }
 
     function emitWorkResumed(uint _jobId, uint _at) public {
-        WorkResumed(_self(), _jobId, _at);
+        emit WorkResumed(_self(), _jobId, _at);
     }
 
     function emitTimeAdded(uint _jobId, uint _time) public {
-        TimeAdded(_self(), _jobId, _time);
+        emit TimeAdded(_self(), _jobId, _time);
     }
 
     function emitWorkFinished(uint _jobId, uint _at) public {
-        WorkFinished(_self(), _jobId, _at);
+        emit WorkFinished(_self(), _jobId, _at);
     }
 
     function emitPaymentReleased(uint _jobId) public {
-        PaymentReleased(_self(), _jobId);
+        emit PaymentReleased(_self(), _jobId);
     }
 
     function emitJobCanceled(uint _jobId) public {
-        JobCanceled(_self(), _jobId);
+        emit JobCanceled(_self(), _jobId);
     }
 
     function _emitJobPosted(

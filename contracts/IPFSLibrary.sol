@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 
 import './adapters/MultiEventsHistoryAdapter.sol';
@@ -17,7 +17,7 @@ contract IPFSLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
 
     StorageInterface.AddressBytes32Bytes32Mapping ipfsHashes;
 
-    function IPFSLibrary(
+    constructor(
         Storage _store,
         bytes32 _crate,
         address _roles2Library
@@ -47,7 +47,7 @@ contract IPFSLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     }
 
     function emitHashSet(address _from, bytes32 _itemName, bytes32 _itemHash) public {
-        HashSet(_self(), _from, _itemName, _itemHash);
+        emit HashSet(_self(), _from, _itemName, _itemHash);
     }
 
     function _emitHashSet(address _from, bytes32 _itemName, bytes32 _itemHash) internal {

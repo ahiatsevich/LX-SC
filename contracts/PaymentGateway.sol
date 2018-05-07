@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 import './adapters/MultiEventsHistoryAdapter.sol';
 import './adapters/Roles2LibraryAndERC20LibraryAdapter.sol';
@@ -41,7 +41,7 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     StorageInterface.Address feeAddress;
     StorageInterface.AddressUIntMapping fees; // 10000 is 100%.
 
-    function PaymentGateway(
+    constructor(
         Storage _store,
         bytes32 _crate,
         address _roles2Library,
@@ -338,19 +338,19 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     }
 
     function emitFeeSet(uint _feePercent, address _contract) public {
-        FeeSet(_self(), _contract, _feePercent);
+        emit FeeSet(_self(), _contract, _feePercent);
     }
 
     function emitDeposited(address _by, uint _value, address _contract) public {
-        Deposited(_self(), _contract, _by, _value);
+        emit Deposited(_self(), _contract, _by, _value);
     }
 
     function emitWithdrawn(address _by, uint _value, address _contract) public {
-        Withdrawn(_self(), _contract, _by, _value);
+        emit Withdrawn(_self(), _contract, _by, _value);
     }
 
     function emitTransferred(address _from, address _to, uint _value, address _contract) public {
-        Transferred(_self(), _contract, _from, _to, _value);
+        emit Transferred(_self(), _contract, _from, _to, _value);
     }
 
 }

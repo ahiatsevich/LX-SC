@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 
 import './adapters/MultiEventsHistoryAdapter.sol';
@@ -39,7 +39,7 @@ contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         _;
     }
 
-    function Roles2Library(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) public {
+    constructor(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) public {
         rootUsers.init('rootUsers');
         userRoles.init('userRoles');
         capabilityRoles.init('capabilityRoles');
@@ -96,13 +96,13 @@ contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
     function _setUserRole(address _user, uint8 _role, bool _enabled) internal returns (uint) {
         bytes32 lastRoles = getUserRoles(_user);
         bytes32 shifted = _shift(_role);
-        
+
         if (_enabled) {
             store.set(userRoles, _user, lastRoles | shifted);
             _emitRoleAdded(_user, _role);
             return OK;
         }
-    
+
         store.set(userRoles, _user, lastRoles & bitNot(shifted));
         _emitRoleRemoved(_user, _role);
         return OK;
@@ -110,7 +110,7 @@ contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
 
     function setPublicCapability(address _code, bytes4 _sig, bool _enabled) onlyContractOwner external returns (uint) {
         store.set(publicCapabilities, _code, _sig, _enabled);
-        
+
         if (_enabled) {
             _emitPublicCapabilityAdded(_code, _sig);
         } else {
@@ -187,26 +187,26 @@ contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
     }
 
     function emitRoleAdded(address _user, uint8 _role) public {
-        RoleAdded(_self(), _user, _role);
+        emit RoleAdded(_self(), _user, _role);
     }
 
     function emitRoleRemoved(address _user, uint8 _role) public {
-        RoleRemoved(_self(), _user, _role);
+        emit RoleRemoved(_self(), _user, _role);
     }
 
     function emitCapabilityAdded(address _code, bytes4 _sig, uint8 _role) public {
-        CapabilityAdded(_self(), _code, _sig, _role);
+        emit CapabilityAdded(_self(), _code, _sig, _role);
     }
 
     function emitCapabilityRemoved(address _code, bytes4 _sig, uint8 _role) public {
-        CapabilityRemoved(_self(), _code, _sig, _role);
+        emit CapabilityRemoved(_self(), _code, _sig, _role);
     }
 
     function emitPublicCapabilityAdded(address _code, bytes4 _sig) public {
-        PublicCapabilityAdded(_self(), _code, _sig);
+        emit PublicCapabilityAdded(_self(), _code, _sig);
     }
 
     function emitPublicCapabilityRemoved(address _code, bytes4 _sig) public {
-        PublicCapabilityRemoved(_self(), _code, _sig);
+        emit PublicCapabilityRemoved(_self(), _code, _sig);
     }
 }

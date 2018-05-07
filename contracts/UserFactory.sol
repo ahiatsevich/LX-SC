@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 
 import './User.sol';
@@ -34,7 +34,7 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
 
     UserLibraryInterface userLibrary;
 
-    function UserFactory(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {}
+    constructor(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {}
 
     function setupEventsHistory(address _eventsHistory) auth external returns (uint) {
         require(_eventsHistory != 0x0);
@@ -62,7 +62,7 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     )
     auth
     public
-    returns (uint) 
+    returns (uint)
     {
         require(_owner != 0x0);
 
@@ -83,20 +83,20 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         }
     }
 
-    event DebugEvent1(uint line, bytes32 desc);
-    event DebugEvent2(uint line, uint desc);
-    event DebugEvent3(uint line, address desc);
+    //event DebugEvent1(uint line, bytes32 desc);
+    //event DebugEvent2(uint line, uint desc);
+    //event DebugEvent3(uint line, address desc);
     function _setSkills(address _user, uint _areas, uint[] _categories, uint[] _skills) internal {
         if (_areas == 0) {
             return;
         }
-    
+
         uint resultCode = userLibrary.setMany(_user, _areas, _categories, _skills);
         if (OK != resultCode) {
             // revert();
-            DebugEvent1(92, bytes32(resultCode));
-            DebugEvent2(93, resultCode);
-            DebugEvent3(94, address(resultCode));
+            //DebugEvent1(92, bytes32(resultCode));
+            //DebugEvent2(93, resultCode);
+            //DebugEvent3(94, address(resultCode));
             _emitErrorCode(resultCode);
 
         }
@@ -111,8 +111,8 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         uint _areas,
         uint[] _categories,
         uint[] _skills
-    ) 
-    internal 
+    )
+    internal
     {
         UserFactory(getEventsHistory()).emitUserCreated(
             _user,
@@ -135,10 +135,10 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         uint _areas,
         uint[] _categories,
         uint[] _skills
-    ) 
-    public 
+    )
+    public
     {
-        UserCreated(
+        emit UserCreated(
             _self(),
             _user,
             _proxy,

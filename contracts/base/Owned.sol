@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 
 import './ERC20Interface.sol';
@@ -19,7 +19,7 @@ contract Owned {
     address public contractOwner;
     address public pendingContractOwner;
 
-    function Owned() public {
+    constructor() public {
         contractOwner = msg.sender;
     }
 
@@ -82,8 +82,8 @@ contract Owned {
     *  This method is only allowed for contact owner.
     */
     function withdrawEther() external onlyContractOwner {
-        if (this.balance > 0)  {
-            msg.sender.transfer(this.balance);
+        if (address(this).balance > 0)  {
+            address(msg.sender).transfer(address(this).balance);
         }
     }
 }

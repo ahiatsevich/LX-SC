@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 
 import './User.sol';
@@ -24,7 +24,7 @@ contract User is Owned {
         }
     }
 
-    function User(address _owner, address _recoveryContract) public {
+    constructor(address _owner, address _recoveryContract) public {
         userProxy = new UserProxy();
         recoveryContract = _recoveryContract;
         contractOwner = _owner;
@@ -52,7 +52,7 @@ contract User is Owned {
     )
     onlyContractOwner
     public
-    returns (bytes32) 
+    returns (bytes32)
     {
         return userProxy.forward(_destination, _data, _value, _throwOnFailedCall);
     }

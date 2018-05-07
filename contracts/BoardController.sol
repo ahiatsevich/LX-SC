@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 
 import './adapters/StorageAdapter.sol';
@@ -82,7 +82,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         _;
     }
 
-    function BoardController(
+    constructor(
         Storage _store,
         bytes32 _crate,
         address _roles2Library,
@@ -240,7 +240,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     )
     public
     {
-        BoardCreated(
+        emit BoardCreated(
             _self(),
             _boardId,
             _name,
@@ -254,15 +254,15 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     }
 
     function emitJobBinded(uint _boardId, uint _jobId, bool _status) public {
-        JobBinded(_self(), _boardId, _jobId, _status);
+        emit JobBinded(_self(), _boardId, _jobId, _status);
     }
 
     function emitUserBinded(uint _boardId, address _user, bool _status) public {
-        UserBinded(_self(), _boardId, _user, _status);
+        emit UserBinded(_self(), _boardId, _user, _status);
     }
 
     function emitBoardClosed(uint _boardId, bool _status) public {
-        BoardClosed(_self(), _boardId, _status);
+        emit BoardClosed(_self(), _boardId, _status);
     }
 
     /* INTERNAL */

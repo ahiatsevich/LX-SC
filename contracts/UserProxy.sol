@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 import './base/Owned.sol';
 
@@ -21,7 +21,7 @@ contract UserProxy is Owned {
     );
 
     function () external payable {
-        Received(msg.sender, msg.value);
+        emit Received(msg.sender, msg.value);
     }
 
     function forward(
@@ -29,10 +29,10 @@ contract UserProxy is Owned {
         bytes _data,
         uint _value,
         bool _throwOnFailedCall
-    )  
+    )
     onlyContractOwner
     public
-    returns (bytes32 result) 
+    returns (bytes32 result)
     {
         bool success;
         assembly {
@@ -41,6 +41,6 @@ contract UserProxy is Owned {
         }
         require(success || !_throwOnFailedCall);
 
-        Forwarded(_destination, _value, _data);
+        emit Forwarded(_destination, _value, _data);
     }
 }

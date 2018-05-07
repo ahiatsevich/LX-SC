@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.23;
 
 import './adapters/MultiEventsHistoryAdapter.sol';
 import './base/Owned.sol';
@@ -47,10 +47,10 @@ contract StorageManager is MultiEventsHistoryAdapter, Owned {
     }
 
     function emitAccessGiven(address _user, bytes32 _role) public {
-        AccessGiven(_self(), _user, _role);
+        emit AccessGiven(_self(), _user, _role);
     }
 
     function emitAccessBlocked(address _user, bytes32 _role) public {
-        AccessBlocked(_self(), _user, _role);
+        emit AccessBlocked(_self(), _user, _role);
     }
 }

@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 
 import './adapters/MultiEventsHistoryAdapter.sol';
@@ -22,7 +22,7 @@ contract ERC20Library is StorageAdapter, MultiEventsHistoryAdapter, Roles2Librar
 
     StorageInterface.AddressesSet contracts;
 
-    function ERC20Library(
+    constructor(
         Storage _store,
         bytes32 _crate,
         address _roles2Library
@@ -76,11 +76,11 @@ contract ERC20Library is StorageAdapter, MultiEventsHistoryAdapter, Roles2Librar
     }
 
     function emitContractAdded(address _address) public {
-        ContractAdded(_self(), _address);
+        emit ContractAdded(_self(), _address);
     }
 
     function emitContractRemoved(address _address) public {
-        ContractRemoved(_self(), _address);
+        emit ContractRemoved(_self(), _address);
     }
 
     function _emitContractAdded(address _address) internal {

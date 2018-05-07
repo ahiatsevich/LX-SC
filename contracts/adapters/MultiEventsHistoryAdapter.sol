@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 /**
  * @title General MultiEventsHistory user.
@@ -39,10 +39,10 @@ contract MultiEventsHistoryAdapter {
     }
 
     function emitError(bytes32 _msg) public {
-        Error(_self(), _msg);
+        emit Error(_self(), _msg);
     }
 
     function emitErrorCode(uint _errorCode) public {
-        ErrorCode(_self(), _errorCode);
+        emit ErrorCode(_self(), _errorCode);
     }
 }

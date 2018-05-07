@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 contract Mock {
 
@@ -30,7 +30,7 @@ contract Mock {
         callsCount++;
         bytes32 callHash = keccak256(msg.sender, msg.value, msg.data);
         if (expectations[nextExpectation].callHash != callHash) {
-            UnexpectedCall(nextExpectation, msg.sender, msg.value, msg.data, callHash);
+            emit UnexpectedCall(nextExpectation, msg.sender, msg.value, msg.data, callHash);
             return;
         }
         bytes32 result = expectations[nextExpectation++].callReturn;
