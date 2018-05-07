@@ -23,10 +23,10 @@ contract Roles2LibraryAdapter {
 
     modifier auth {
         if (!_isAuthorized(msg.sender, msg.sig)) {
-            emit AuthFailedError(this, msg.sender, msg.sig);
-            return;
+            emit AuthFailedError(this, msg.sender, msg.sig);        
+        } else {
+            _;
         }
-        _;
     }
 
     constructor(address _roles2Library) public {

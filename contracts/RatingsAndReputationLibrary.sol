@@ -149,10 +149,9 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     modifier onlyBoardMember(uint _boardId, address _user) {
-      if (boardController.getUserStatus(_boardId, _user) != true) {
-        return;
+      if (boardController.getUserStatus(_boardId, _user)) {
+          _;
       }
-      _;
     }
 
     constructor(
