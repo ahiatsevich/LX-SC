@@ -31,7 +31,10 @@ contract Mock {
         bytes32 callHash = keccak256(msg.sender, msg.value, msg.data);
         if (expectations[nextExpectation].callHash != callHash) {
             emit UnexpectedCall(nextExpectation, msg.sender, msg.value, msg.data, callHash);
-            return;
+            assembly {
+                mstore(0, 0)
+                return (0, 32)
+            }
         }
         bytes32 result = expectations[nextExpectation++].callReturn;
         assembly {
