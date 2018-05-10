@@ -28,8 +28,8 @@
   "homepage": "https://github.com/ChronoBank/LX-SC#readme",
   "dependencies": {
     "bluebird": "^3.5.0",
-    "ethereumjs-testrpc": "^6.0.3",
-    "truffle": "4.1.0",
+    "ganache-cli": "^6.1.0",
+    "truffle": "4.1.8",
     "abi-decoder": "^1.0.9",
     "truffle-hdwallet-provider": "mikefluff/truffle-hdwallet-provider#7a2eccca1ba17c235a3ef258914ca74ea5f13014"
   },
