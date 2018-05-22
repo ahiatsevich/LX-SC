@@ -1,6 +1,7 @@
 "use strict";
 
 const JobController = artifacts.require('./JobController.sol');
+const JobsDataProvider = artifacts.require('./JobsDataProvider.sol');
 const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
@@ -45,6 +46,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
   let storage;
   let mock;
   let jobController;
+  let jobsDataProvider;
   let multiEventsHistory;
   let paymentGateway;
   let userLibrary = web3.eth.contract(UserLibrary.abi).at('0x0');
@@ -92,13 +94,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       _worker, recovery, roles, jobArea, [jobCategory], [jobSkills]
     ))
     .then(() => jobController.postJob(
-      jobArea, jobCategory, jobSkills, "Job details", {from: _client}
+      jobArea, jobCategory, jobSkills, 4 /* default pay size */, "Job details", {from: _client}
     ))
     .then(tx => jobId = tx.logs[0].args.jobId)
     .then(() => jobController.postJobOffer(
       jobId, 100, 100, 100, {from: _worker}
     ))
-    .then(() => jobController.acceptOffer(jobId, _worker, {from: _client}))
+    .then(async () => {
+      const payment = await jobController.calculateLockAmountFor.call(_worker, jobId)
+      return await jobController.acceptOffer(jobId, _worker, { from: _client, value: payment, })
+    })
     .then(() => jobId);
   }
 
@@ -124,6 +129,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(instance => multiEventsHistory = instance)
     .then(() => JobController.deployed())
     .then(instance => jobController = instance)
+    .then(() => JobsDataProvider.deployed())
+    .then(instance => jobsDataProvider = instance)
     .then(() => UserFactory.deployed())
     .then(instance => userFactory = instance)
     .then(() => BalanceHolder.deployed())
@@ -143,8 +150,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(() => userFactory.setUserLibrary(UserLibraryMock.address))
     .then(() => jobController.setUserLibrary(mock.address))
     .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
+    .then(() => jobController.setBoardController(boardController.address))
 
-    .then(() => ratingsLibrary.setJobController(jobController.address))
+    .then(() => ratingsLibrary.setJobController(jobsDataProvider.address))
     .then(() => ratingsLibrary.setUserLibrary(mock.address))
     .then(() => ratingsLibrary.setBoardController(boardController.address))
 
@@ -705,7 +713,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => jobController.endWork(jobId, {from: worker}))
       .then(() => call(...args))
       .then(() => jobController.confirmEndWork(jobId, {from: client}))
-      .then(() => jobController.getJobState(jobId))
+      .then(() => jobsDataProvider.getJobState(jobId))
       .then(asserts.equal(6))  // Ensure all previous stage changes was successful
       .then(() => call(...args))
       .then(() => Promise.each(skills, skill => {
@@ -783,9 +791,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const ratings = [3, 7, 9];
       return Promise.resolve()
       .then(() => jobController.cancelJob(jobId, {from: client}))
-      .then(() => jobController.getJobState(jobId))
+      .then(() => jobsDataProvider.getJobState(jobId))
       .then(asserts.equal(7))  // Ensure the job is FINALIZED
-      .then(() => jobController.getFinalState(jobId))
+      .then(() => jobsDataProvider.getFinalState(jobId))
       .then(asserts.equal(2))  // Ensure the job was canceled at ACCEPTED state
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
@@ -810,9 +818,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       return Promise.resolve()
       .then(() => jobController.startWork(jobId, {from: worker}))
       .then(() => jobController.cancelJob(jobId, {from: client}))
-      .then(() => jobController.getJobState(jobId))
+      .then(() => jobsDataProvider.getJobState(jobId))
       .then(asserts.equal(7))  // Ensure the job is FINALIZED
-      .then(() => jobController.getFinalState(jobId))
+      .then(() => jobsDataProvider.getFinalState(jobId))
       .then(asserts.equal(3))  // Ensure the job was canceled at PENDING_START state
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
@@ -1120,9 +1128,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => jobController.startWork(jobId, {from: worker}))
       .then(() => jobController.confirmStartWork(jobId, {from: client}))
       .then(() => jobController.cancelJob(jobId, {from: client}))
-      .then(() => jobController.getJobState(jobId))
+      .then(() => jobsDataProvider.getJobState(jobId))
       .then(asserts.equal(7))  // Ensure the job is FINALIZED
-      .then(() => jobController.getFinalState(jobId))
+      .then(() => jobsDataProvider.getFinalState(jobId))
       .then(asserts.equal(4))  // Ensure the job was canceled at STARTED state
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
@@ -1149,9 +1157,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => jobController.confirmStartWork(jobId, {from: client}))
       .then(() => jobController.endWork(jobId, {from: worker}))
       .then(() => jobController.cancelJob(jobId, {from: client}))
-      .then(() => jobController.getJobState(jobId))
+      .then(() => jobsDataProvider.getJobState(jobId))
       .then(asserts.equal(7))  // Ensure the job is FINALIZED
-      .then(() => jobController.getFinalState(jobId))
+      .then(() => jobsDataProvider.getFinalState(jobId))
       .then(asserts.equal(5))  // Ensure the job was canceled at PENDING_FINISH state
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}

@@ -48,8 +48,12 @@ contract Mock {
         expectations[++expectationsCount] = Expect(keccak256(_from, _value, _input), _return);
     }
 
-    function convertToBytes32(uint _value) public pure returns (bytes32) {
+    function convertUIntToBytes32(uint _value) public pure returns (bytes32) {
         return bytes32(_value);
+    }
+
+    function convertToBytes32(bytes32 _value) public pure returns (bytes32) {
+        return _value;
     }
 
     function bitAndBytes32ToBytes32(bytes32 _arg1, bytes32 _arg2) public pure returns (uint) {
