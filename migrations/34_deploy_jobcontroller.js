@@ -10,6 +10,6 @@ module.exports = deployer => {
         let jobController = await JobController.deployed()
         await jobController.init()
 
-        console.log("[Migration] ContractsManager #deployed")
+        console.log("[Migration] JobController #deployed")
 	})
 };
