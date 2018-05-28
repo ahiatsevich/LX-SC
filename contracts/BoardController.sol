@@ -10,7 +10,7 @@ import './adapters/StorageAdapter.sol';
 import './adapters/MultiEventsHistoryAdapter.sol';
 import './adapters/Roles2LibraryAdapter.sol';
 import './base/BitOps.sol';
-import "./JobController.sol";
+import "./JobsDataProvider.sol";
 
 
 contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter, BitOps {
@@ -35,8 +35,8 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     event UserBinded(address indexed self, uint indexed boardId, address user, bool status);
     event BoardClosed(address indexed self, uint indexed boardId, bool status);
 
-    /// @dev JobController address. Read-only!
-    StorageInterface.Address jobController;
+    /// @dev Jobs Data Provider address. Read-only!
+    StorageInterface.Address jobsDataProvider;
     StorageInterface.UInt boardsCount;
 
     StorageInterface.UIntAddressMapping boardCreator;
@@ -107,6 +107,8 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     Roles2LibraryAdapter(_roles2Library)
     public
     {
+        jobsDataProvider.init("jobsDataProvider");
+        
         boardsCount.init("boardsCount");
 
         boardCreator.init("boardCreator");
@@ -124,8 +126,8 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         boundJobsInBoard.init("boundJobsInBoard");
     }
 
-    function setJobController(address _jobController) auth external returns (uint) {
-        store.set(jobController, _jobController);
+    function setJobsDataProvider(address _jobsDataProvider) auth external returns (uint) {
+        store.set(jobsDataProvider, _jobsDataProvider);
         return OK;
     }
 
@@ -271,13 +273,13 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         uint _count = store.count(boundJobsInBoard, bytes32(_boardId));
         require(_fromIdx < _count);
         _maxLen = (_fromIdx + _maxLen < _count) ? _maxLen : (_count - _fromIdx);
-        JobController _jobController = JobController(store.get(jobController));
+        JobsDataProvider _jobsDataProvider = JobsDataProvider(store.get(jobsDataProvider));
         _ids = new uint[](_maxLen);
         uint _pointer = 0;
         for (uint _jobIdx = _fromIdx; _jobIdx <= _fromIdx + _maxLen; ++_jobIdx) {
             uint _jobId = store.get(boundJobsInBoard, bytes32(_boardId), _jobIdx);
-            if (address(_jobController) == 0x0 || 
-                _jobController.getJobState(_jobId) == _jobState
+            if (address(_jobsDataProvider) == 0x0 || 
+                _jobsDataProvider.getJobState(_jobId) == _jobState
             ) {
                 _ids[_pointer] = _jobId;
                 _pointer += 1;
