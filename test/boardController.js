@@ -73,6 +73,7 @@ contract('BoardController', function(accounts) {
   const jobArea = 4;
   const jobCategory = 4;
   const jobSkills = 4;
+  const jobDefaultPay = 90;
   const jobDetails = 'Job details';
 
   before('setup', () => {
@@ -217,7 +218,7 @@ contract('BoardController', function(accounts) {
     it('should allow to bind job on board', () => {
       return Promise.resolve()
         .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
-        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
+        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, {from: client}))
         .then(() => boardController.bindJobWithBoard(boardId, jobId))
         .then(() => boardController.getJobStatus(boardId, jobId))
         .then(asserts.equal(true));
@@ -226,7 +227,7 @@ contract('BoardController', function(accounts) {
     it('should NOT allow to bind job on closed board', () => {
       return Promise.resolve()
         .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
-        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
+        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, {from: client}))
         .then(() => boardController.closeBoard(boardId, {from: moderator}))
         .then(() => boardController.bindJobWithBoard.call(boardId, jobId))
         .then((code) => assert.equal(code, ErrorsNamespace.BOARD_CONTROLLER_BOARD_IS_CLOSED));
@@ -237,7 +238,7 @@ contract('BoardController', function(accounts) {
       return Promise.resolve()
         .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
-        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
+        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, {from: client}))
         .then(() => boardController.bindJobWithBoard(boardId, jobId))
         .then(() => boardController.bindJobWithBoard.call(boardId2, jobId))
         .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.BOARD_CONTROLLER_JOB_IS_ALREADY_BINDED));
@@ -246,7 +247,7 @@ contract('BoardController', function(accounts) {
     it('should NOT allow to bind binded job on same board twice', () => {
       return Promise.resolve()
         .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
-        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
+        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, {from: client}))
         .then(() => boardController.bindJobWithBoard(boardId, jobId))
         .then(() => boardController.bindJobWithBoard.call(boardId, jobId))
         .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.BOARD_CONTROLLER_JOB_IS_ALREADY_BINDED));
@@ -255,7 +256,7 @@ contract('BoardController', function(accounts) {
     it('should emit "Job Binded" event', () => {
       return Promise.resolve()
         .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
-        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
+        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, {from: client}))
         .then(() => boardController.bindJobWithBoard(boardId, jobId))
         .then(tx => {
           assert.equal(tx.logs.length, 1);

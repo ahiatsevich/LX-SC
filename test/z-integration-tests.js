@@ -74,6 +74,7 @@ contract('Integration tests (user stories)', (accounts) => {
             area: 4,
             category: 4,
             skills: 4,
+            defaultPay: 90,
             details: '0x00bb00bb00bb00bb00bb'
         },
         {
@@ -81,6 +82,7 @@ contract('Integration tests (user stories)', (accounts) => {
             area: 4,
             category: 4,
             skills: 8,
+            defaultPay: 90,
             details: '0x00aa00aa00aa00aa00aa'
         },
         {
@@ -88,6 +90,7 @@ contract('Integration tests (user stories)', (accounts) => {
             area: 4,
             category:4,
             skills: 4,
+            defaultPay: 90,
             details: '0x00ee00ee00ee00ee00ee'
         },
         {
@@ -95,6 +98,7 @@ contract('Integration tests (user stories)', (accounts) => {
             area: 16,
             category: 16,
             skills: 32,
+            defaultPay: 90,
             details: '0x00ff00ff00ff00ff00ff'
         },
         {
@@ -102,6 +106,7 @@ contract('Integration tests (user stories)', (accounts) => {
             area: 4,
             category: 16,
             skills: 4,
+            defaultPay: 90,
             details: '0x00fe00fe00fe00fe00fe'
         },
         {
@@ -109,6 +114,7 @@ contract('Integration tests (user stories)', (accounts) => {
             area: 16,
             category: 4,
             skills: 4,
+            defaultPay: 90,
             details: '0x00fe00fe00fe00fe00fe'
         },
     ]
@@ -116,7 +122,7 @@ contract('Integration tests (user stories)', (accounts) => {
     const setupJob = async (_job, _client = users.client, _depositBalance = 1000000000) => {
         const roles = []
 
-        const postJobTx = await contracts.jobController.postJob(_job.area, _job.category, _job.skills, _job.details, { from: _client })
+        const postJobTx = await contracts.jobController.postJob(_job.area, _job.category, _job.skills, _job.defaultPay, _job.details, { from: _client })
         const postJobEvent = (await eventsHelper.findEvent([contracts.jobController], postJobTx, "JobPosted"))[0]
 
         let jobId = postJobEvent.args.jobId
