@@ -34,7 +34,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     uint constant JOB_CONTROLLER_WORK_IS_ALREADY_PAUSED = JOB_CONTROLLER_SCOPE + 5;
     uint constant JOB_CONTROLLER_WORK_IS_NOT_PAUSED = JOB_CONTROLLER_SCOPE + 6;
 
-    event JobPosted(address indexed self, uint indexed jobId, address client, uint skillsArea, uint skillsCategory, uint skills, bytes32 detailsIPFSHash, bool bindStatus);
+    event JobPosted(address indexed self, uint indexed jobId, address client, uint skillsArea, uint skillsCategory, uint skills, uint defaultPay, bytes32 detailsIPFSHash, bool bindStatus);
     event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint rate, uint estimate, uint ontop);
     event JobOfferAccepted(address indexed self, uint indexed jobId, address worker);
     event WorkStarted(address indexed self, uint indexed jobId, uint at);
@@ -204,6 +204,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _area,
         uint _category,
         uint _skills,
+        uint _defaultPay,
         bytes32 _detailsIPFSHash
     )
     singleOddFlag(_area)
@@ -221,10 +222,11 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         store.set(jobSkillsArea, jobId, _area);
         store.set(jobSkillsCategory, jobId, _category);
         store.set(jobSkills, jobId, _skills);
+        store.set(jobDefaultPay, jobId, _defaultPay);
         store.set(jobDetailsIPFSHash, jobId, _detailsIPFSHash);
         store.add(clientJobs, bytes32(msg.sender), jobId);
 
-        _emitJobPosted(jobId, msg.sender, _area, _category, _skills, _detailsIPFSHash, false);
+        _emitJobPosted(jobId, msg.sender, _area, _category, _skills, _defaultPay, _detailsIPFSHash, false);
         return OK;
     }
 
@@ -519,12 +521,13 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _skillsArea,
         uint _skillsCategory,
         uint _skills,
+        uint _defaultPay,
         bytes32 _detailsIPFSHash,
         bool _bindStatus
     )
     public
     {
-        JobPosted(_self(), _jobId, _client, _skillsArea, _skillsCategory, _skills, _detailsIPFSHash, _bindStatus);
+        JobPosted(_self(), _jobId, _client, _skillsArea, _skillsCategory, _skills, _defaultPay, _detailsIPFSHash, _bindStatus);
     }
 
     function emitJobOfferPosted(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) public {
@@ -573,6 +576,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _skillsArea,
         uint _skillsCategory,
         uint _skills,
+        uint _defaultPay,
         bytes32 _detailsIPFSHash,
         bool _bindStatus
     )
@@ -584,6 +588,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
             _skillsArea,
             _skillsCategory,
             _skills,
+            _defaultPay,
             _detailsIPFSHash,
             _bindStatus
         );

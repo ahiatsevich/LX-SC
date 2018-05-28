@@ -38,6 +38,8 @@ contract JobDataCore is StorageAdapter {
     StorageInterface.UIntUIntMapping jobPausedAt;
     StorageInterface.UIntUIntMapping jobPausedFor;
 
+    /// @dev Default pay for a posted job that are recommended for offers
+    StorageInterface.UIntUIntMapping jobDefaultPay;  // jobId => default pay size
     StorageInterface.UIntAddressUIntMapping jobOfferRate; // Per minute.
     StorageInterface.UIntAddressUIntMapping jobOfferEstimate; // In minutes.
     StorageInterface.UIntAddressUIntMapping jobOfferOntop; // Getting to the workplace, etc.
@@ -87,6 +89,7 @@ contract JobDataCore is StorageAdapter {
         jobPausedAt.init("jobPausedAt");
         jobPausedFor.init("jobPausedFor");
 
+        jobDefaultPay.init("jobDefaultPay");
         jobOfferRate.init("jobOfferRate");
         jobOfferEstimate.init("jobOfferEstimate");
         jobOfferOntop.init("jobOfferOntop");

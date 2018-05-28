@@ -144,7 +144,7 @@ contract JobsDataProvider is JobDataCore, BitOps {
         return store.get(jobsCount);
     }
 
-    uint8 constant JOBS_RESULT_OFFSET = 16;
+    uint8 constant JOBS_RESULT_OFFSET = 17;
 
     /// @notice Gets jobs details in a archived way (too little stack size
     /// for such amount of return values)
@@ -158,12 +158,13 @@ contract JobsDataProvider is JobDataCore, BitOps {
     ///     "_skills": "`uint` skills mask",
     ///     "_detailsIpfs": "`bytes32` details hash",
     ///     "_state": "`uint` job's state, see JobState",
-    ///     "_createdAt": "`uint` publishing (creation) timestamp"
-    ///     "_acceptedAt": "`uint` an offer has been accepted timestamp"
-    ///     "_pendingStartAt": "`uint` pending started timestamp"
-    ///     "_startedAt": "`uint` work started timestamp"
-    ///     "_pendingFinishAt": "`uint` pending finish timestamp"
-    ///     "_finishedAt": "`uint` work finished timestamp"
+    ///     "_defaultPay": "`uint` job's default pay size for job seekers",
+    ///     "_createdAt": "`uint` publishing (creation) timestamp",
+    ///     "_acceptedAt": "`uint` an offer has been accepted timestamp",
+    ///     "_pendingStartAt": "`uint` pending started timestamp",
+    ///     "_startedAt": "`uint` work started timestamp",
+    ///     "_pendingFinishAt": "`uint` pending finish timestamp",
+    ///     "_finishedAt": "`uint` work finished timestamp",
     ///     "_finalizedAt": "`uint` paycheck finalized timestamp"
     /// }
     function getJobsByIds(uint[] _jobIds) public view returns (
@@ -180,13 +181,14 @@ contract JobsDataProvider is JobDataCore, BitOps {
             _results[_idx * JOBS_RESULT_OFFSET + 6] = bytes32(store.get(jobSkills, _jobIds[_idx]));
             _results[_idx * JOBS_RESULT_OFFSET + 7] = store.get(jobDetailsIPFSHash, _jobIds[_idx]);
             _results[_idx * JOBS_RESULT_OFFSET + 8] = bytes32(store.get(jobState, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 9] = bytes32(store.get(jobCreatedAt, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 10] = bytes32(store.get(jobAcceptedAt, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 11] = bytes32(store.get(jobPendingStartAt, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 12] = bytes32(store.get(jobStartTime, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 13] = bytes32(store.get(jobPendingFinishAt, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 14] = bytes32(store.get(jobFinishTime, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 15] = bytes32(store.get(jobFinalizedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 9] = bytes32(store.get(jobDefaultPay, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 10] = bytes32(store.get(jobCreatedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 11] = bytes32(store.get(jobAcceptedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 12] = bytes32(store.get(jobPendingStartAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 13] = bytes32(store.get(jobStartTime, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 14] = bytes32(store.get(jobPendingFinishAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 15] = bytes32(store.get(jobFinishTime, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 16] = bytes32(store.get(jobFinalizedAt, _jobIds[_idx]));
 
             if (address(_boardController) != 0x0) {
                 _results[_idx * JOBS_RESULT_OFFSET + 1] = bytes32(_boardController.getJobsBoard(_jobIds[_idx]));
@@ -250,6 +252,10 @@ contract JobsDataProvider is JobDataCore, BitOps {
 
     function getJobDetailsIPFSHash(uint _jobId) public view returns (bytes32) {
         return store.get(jobDetailsIPFSHash, _jobId);
+    }
+
+    function getJobDefaultPay(uint _jobId) public view returns (uint) {
+        return uint(store.get(jobDefaultPay, _jobId));
     }
 
     function getJobState(uint _jobId) public view returns (uint) {
