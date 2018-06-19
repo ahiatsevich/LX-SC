@@ -5,8 +5,13 @@ const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 
 module.exports = deployer => {
     const UserFactoryRole = 20;
+    const UserRoles = {
+        WORKER: 1,
+        CLIENT: 2,
+        RECRUITER: 3,
+    }
     let userFactory;
-    let rolesLibrary;
+    let rolesLibrary; 
 
     deployer
     .then(() => Roles2Library.deployed())
@@ -16,10 +21,15 @@ module.exports = deployer => {
     .then(() => userFactory.setupEventsHistory(MultiEventsHistory.address))
     .then(() => MultiEventsHistory.deployed())
     .then(multiEventsHistory => multiEventsHistory.authorize(UserFactory.address))
-    .then(() => {
+    .then(async () => {
         let sig = rolesLibrary.contract.addUserRole.getData(0,[0]).slice(0, 10);
-        return rolesLibrary.addRoleCapability(UserFactoryRole, Roles2Library.address, sig);
+        await rolesLibrary.addRoleCapability(UserFactoryRole, Roles2Library.address, sig);
     })
     .then(() => rolesLibrary.addUserRole(UserFactory.address, UserFactoryRole))
+    .then(async () => {
+        const userFactory = await UserFactory.deployed()
+        await userFactory.addAllowedRoles([UserRoles.WORKER, UserRoles.CLIENT, UserRoles.RECRUITER])
+    })
+
     .then(() => console.log("[Migration] UserFactory #initialized"))
 };

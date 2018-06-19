@@ -1187,7 +1187,7 @@ contract('Integration tests (user stories)', (accounts) => {
             userRecoveryAddress = contracts.recovery.address
 
             await contracts.userFactory.addAllowedRoles(userInfo.roles, { from: users.root, })
-
+            
             const recoverData = contracts.recovery.contract.recoverUser.getData(0x0, 0x0)
             await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.recovery.address, recoverData, { from: users.contractOwner })
         })

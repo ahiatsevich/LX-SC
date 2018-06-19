@@ -92,9 +92,20 @@ contract('UserFactory', function(accounts) {
       await helpers.assertExpectations(mock)()
     })
 
+    it("should have pre-installed roles for client, worker and recruiter", async () => {
+      const gotRoles = await userFactory.getAllowedRoles()
+      const Roles = {
+        CLIENT: 1,
+        WORKER: 2,
+        RECRUITER: 3,
+      }
+      assert.equal(gotRoles.toString(), [ Roles.CLIENT, Roles.WORKER, Roles.RECRUITER, ].toString())
+    })
+
     it("should add roles to allowed roles", async () => {
       const caller = accounts[0]
       const roles = [ 10,20, ]
+      const gotRoles = await userFactory.getAllowedRoles()
 
       await userFactory.setRoles2Library(Mock.address)
       await mock.expect(
@@ -109,7 +120,7 @@ contract('UserFactory', function(accounts) {
       )
       await userFactory.addAllowedRoles(roles, { from: caller, })
       await helpers.assertExpectations(mock)()
-      assert.equal((await userFactory.getAllowedRoles.call()).toString(), roles.toString())
+      assert.equal((await userFactory.getAllowedRoles.call()).toString(), Array.prototype.concat.apply(gotRoles, roles).toString())
     })
 
     it("should remove roles from allowed roles", async () => {
@@ -117,6 +128,7 @@ contract('UserFactory', function(accounts) {
       const ROLE1 = 10
       const ROLE2 = 20
       const roles = [ ROLE1, ROLE2, ]
+      const gotRoles = await userFactory.getAllowedRoles()
 
       await userFactory.setRoles2Library(Mock.address)
       await mock.expect(
@@ -142,7 +154,7 @@ contract('UserFactory', function(accounts) {
       )
       await userFactory.removeAllowedRoles([ROLE1], { from: caller, })
       await helpers.assertExpectations(mock)()
-      assert.equal((await userFactory.getAllowedRoles.call()).toString(), [ROLE2].toString())
+      assert.equal((await userFactory.getAllowedRoles.call()).toString(), Array.prototype.concat.apply(gotRoles,[ROLE2]).toString())
     })
   });
 
@@ -178,7 +190,7 @@ contract('UserFactory', function(accounts) {
     it('should THROW if failed to set roles', async () => {
       const caller = accounts[1];
       const owner = accounts[2];
-      const roles = [1, 2];
+      const roles = [400, 500];
 
       await userFactory.setRoles2Library(roles2Library.address)
       await asserts.throws(
@@ -188,7 +200,7 @@ contract('UserFactory', function(accounts) {
 
     it('should create users with roles', async () => {
       const owner = accounts[1];
-      const roles = [1, 2];
+      const roles = [400, 500];
 
       await userFactory.setRoles2Library(roles2Library.address)
       await mock.expect(
