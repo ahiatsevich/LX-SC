@@ -1145,7 +1145,7 @@ contract('UserLibrary', function(accounts) {
     });
   });
 
-  describe.only('Statistics', () => {
+  describe('Statistics', () => {
 
     const users = {
       user1: accounts[1],
