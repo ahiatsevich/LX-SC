@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
@@ -82,7 +82,7 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
         _;
     }
 
-    constructor(
+    function UserLibrary(
         Storage _store, 
         bytes32 _crate, 
         address _roles2Library
@@ -291,10 +291,10 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     view 
     returns (uint _count, uint _userIdx)
     {
-        require(_categories.length == _skills.length, "Invalid categories and skills array lengths");
+        require(_categories.length == _skills.length);
 
         uint _usersCount = getUsersCount();
-        require(_fromIdx < _usersCount, "Invalid fromIdx value");
+        require(_fromIdx < _usersCount);
 
         _maxLen = (_fromIdx + _maxLen <= _usersCount) ? _maxLen : (_usersCount - _fromIdx);
 
@@ -341,7 +341,7 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
         uint _userCategories = store.get(skillCategories, _user, _area);
         for (uint _categoryIdx = 0; _categoryIdx < _categories.length; ++_categoryIdx) {
             uint _category = _categories[_categoryIdx];
-            require(_isValidAreaOrCategory(_category), "Invalid category");
+            require(_isValidAreaOrCategory(_category));
             
             uint _userCategory = _userCategories & _getAreaOrCategoryBits(_category);
 
@@ -381,7 +381,7 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
         uint _userCategories = store.get(skillCategories, _user, _area);
         for (uint _categoryIdx = 0; _categoryIdx < _categories.length; ++_categoryIdx) {
             uint _category = _categories[_categoryIdx];
-            require(_isValidAreaOrCategory(_category), "Invalid category");
+            require(_isValidAreaOrCategory(_category));
             
             uint _userCategory = _userCategories & _getAreaOrCategoryBits(_category);
 

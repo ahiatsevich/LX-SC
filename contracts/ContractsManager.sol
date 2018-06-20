@@ -3,7 +3,7 @@
 * Licensed under the AGPL Version 3 license.
 */
 
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.21;
 
 import "solidity-shared-lib/contracts/Owned.sol";
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
@@ -27,7 +27,7 @@ contract ContractsManager is Owned, StorageAdapter, Roles2LibraryAdapter {
     /**
     *  @notice Constructor that sets `storage` and `crate` to given values.
     */
-    constructor(Storage _store, bytes32 _crate, address _roles2Library)
+    function ContractsManager(Storage _store, bytes32 _crate, address _roles2Library)
     public
     StorageAdapter(_store, _crate)
     Roles2LibraryAdapter(_roles2Library)

@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
@@ -98,7 +98,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         _;
     }
 
-    constructor(
+    function BoardController(
         Storage _store,
         bytes32 _crate,
         address _roles2Library

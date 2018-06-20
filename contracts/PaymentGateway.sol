@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
 import "./adapters/MultiEventsHistoryAdapter.sol";
@@ -42,7 +42,7 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     StorageInterface.Address feeAddress;
     StorageInterface.UInt fees; // 10000 is 100%.
 
-    constructor(
+    function PaymentGateway(
         Storage _store,
         bytes32 _crate,
         address _roles2Library

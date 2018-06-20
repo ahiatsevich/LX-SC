@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
@@ -131,7 +131,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         _;
     }
 
-    constructor(
+    function JobController(
         Storage _store,
         bytes32 _crate,
         address _roles2Library

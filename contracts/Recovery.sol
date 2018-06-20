@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 
 import "./User.sol";
@@ -16,7 +16,7 @@ contract Recovery is Roles2LibraryAdapter {
 
     event UserRecovered(address prevUser, address newUser, User userContract);
 
-    constructor(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {}
+    function Recovery(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {}
 
     function recoverUser(User _userContract, address _newAddress) auth public returns (uint) {
         address prev = _userContract.contractOwner();

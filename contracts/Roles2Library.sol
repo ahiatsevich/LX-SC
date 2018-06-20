@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
@@ -39,7 +39,7 @@ contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         _;
     }
 
-    constructor(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) public {
+    function Roles2Library(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) public {
         rootUsers.init('rootUsers');
         userRoles.init('userRoles');
         capabilityRoles.init('capabilityRoles');

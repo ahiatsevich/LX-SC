@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
@@ -67,7 +67,7 @@ contract SkillsLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return _flag & 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa == 0;
     }
 
-    constructor(
+    function SkillsLibrary(
         Storage _store, 
         bytes32 _crate, 
         address _roles2Library

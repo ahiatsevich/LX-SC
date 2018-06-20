@@ -29,14 +29,13 @@
   "dependencies": {
     "abi-decoder": "^1.0.9",
     "bluebird": "^3.5.0",
-    "solidity-storage-lib": "chronobank/solidity-storage-lib",
-    "truffle-hdwallet-provider": "mikefluff/truffle-hdwallet-provider"
+    "solidity-storage-lib": "alesanro/solidity-storage-lib#downgrade-solc-0.4.21",
+    "truffle-hdwallet-provider": "mikefluff/truffle-hdwallet-provider#7a2eccca1ba17c235a3ef258914ca74ea5f13014"
   },
   "devDependencies": {
     "ganache-cli": "^6.1.0",
-    "truffle": "4.1.7",
+    "truffle": "4.1.5",
     "babel-polyfill": "^6.26.0",
-    "truffle-hdwallet-provider": "mikefluff/truffle-hdwallet-provider#7a2eccca1ba17c235a3ef258914ca74ea5f13014",
     "standard-version": "^4.0.0"
   }
 }

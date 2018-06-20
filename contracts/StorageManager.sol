@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.21;
 
 import "solidity-storage-lib/contracts/BaseStorageManager.sol";
 import "./adapters/MultiEventsHistoryAdapter.sol";

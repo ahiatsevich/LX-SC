@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 
 import "solidity-shared-lib/contracts/Owned.sol";
@@ -24,7 +24,7 @@ contract User is Owned {
         }
     }
 
-    constructor(address _owner, address _recoveryContract) public {
+    function User(address _owner, address _recoveryContract) public {
         userProxy = new UserProxy();
         recoveryContract = _recoveryContract;
         contractOwner = _owner;

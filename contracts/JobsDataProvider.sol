@@ -17,7 +17,7 @@ interface BoardControllerAccessor {
 
 contract JobsDataProvider is JobDataCore {
 
-    constructor(
+    function JobsDataProvider(
         Storage _store,
         bytes32 _crate
     )

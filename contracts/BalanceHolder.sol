@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 
 import "solidity-shared-lib/contracts/ERC20Interface.sol";
@@ -11,7 +11,7 @@ import "./adapters/Roles2LibraryAdapter.sol";
 
 contract BalanceHolder is Roles2LibraryAdapter {
 
-    constructor(address _roles2Library)
+    function BalanceHolder(address _roles2Library)
     Roles2LibraryAdapter(_roles2Library)
     public
     {

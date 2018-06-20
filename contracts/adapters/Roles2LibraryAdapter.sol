@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 
 contract Roles2LibraryInterface {
@@ -29,7 +29,7 @@ contract Roles2LibraryAdapter {
         _;
     }
 
-    constructor(address _roles2Library) public {
+    function Roles2LibraryAdapter(address _roles2Library) public {
         roles2Library = Roles2LibraryInterface(_roles2Library);
     }
 

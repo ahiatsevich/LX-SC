@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 
 import "./User.sol";
@@ -31,7 +31,7 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     mapping(uint8 => uint8) internal indexToRoles;
     uint8 internal allowedRolesCount;
 
-    constructor(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {}
+    function UserFactory(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {}
 
     function setupEventsHistory(address _eventsHistory) auth external returns (uint) {
         require(_eventsHistory != 0x0);
@@ -99,7 +99,7 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         require(_owner != 0x0);
 
         for (uint _roleIdx = 0; _roleIdx < _roles.length; ++_roleIdx) {
-            require(allowedRoles[_roles[_roleIdx]], "Should provide only allowed roles");
+            require(allowedRoles[_roles[_roleIdx]]);
         }
 
         User user = new User(_owner, _recoveryContract);
