@@ -1302,7 +1302,7 @@ contract('JobController', function(accounts) {
   });
 
 
-  describe.only('Reward release', () => {
+  describe('Reward release', () => {
 
     it("should NOT allow to cancel job if operation " +
        "was not allowed by Payment Processor", () => {

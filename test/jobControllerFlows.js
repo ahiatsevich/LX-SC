@@ -1365,7 +1365,7 @@ contract("JobController workflows", accounts => {
 				})
 			})
 
-			describe.only("when releasing payment", () => {
+			describe("when releasing payment", () => {
 				var payment
 
 				beforeEach(async () => {
