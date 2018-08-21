@@ -13,14 +13,8 @@ import "./base/BitOps.sol";
 import "./JobsDataProvider.sol";
 
 
-contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter, BitOps {
-
-    uint constant BOARD_CONTROLLER_SCOPE = 11000;
-    uint constant BOARD_CONTROLLER_JOB_IS_ALREADY_BINDED = BOARD_CONTROLLER_SCOPE + 1;
-    uint constant BOARD_CONTROLLER_USER_IS_ALREADY_BINDED = BOARD_CONTROLLER_SCOPE + 2;
-    uint constant BOARD_CONTROLLER_USER_IS_NOT_BINDED = BOARD_CONTROLLER_SCOPE + 3;
-    uint constant BOARD_CONTROLLER_BOARD_IS_CLOSED = BOARD_CONTROLLER_SCOPE + 4;
-
+contract BoardControllerEmitter is MultiEventsHistoryAdapter {
+    
     event BoardCreated(
         address indexed self,
         uint indexed boardId,
@@ -29,31 +23,156 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         uint boardTagsArea,
         uint boardTagsCategory,
         bytes32 boardIpfsHash,
-        bool status
+        bool status,
+        uint boardType
     );
+    event BoardCreated(
+        address indexed self,
+        uint indexed boardId,
+        address creator,
+        bytes32 invitationsMerkleRoot,
+        bytes32 boardIpfsHash,
+        bool status,
+        uint boardType
+    );
+    event BoardCreated(
+        address indexed self,
+        uint indexed boardId,
+        address creator,
+        bytes32 boardIpfsHash,
+        bool status,
+        uint boardType
+    );
+
     event JobBinded(address indexed self, uint indexed boardId, uint jobId, bool status);
     event UserBinded(address indexed self, uint indexed boardId, address user, bool status);
     event BoardClosed(address indexed self, uint indexed boardId, bool status);
 
+    function emitBoardCreated(
+        uint _boardId,
+        address _creator,
+        uint _tags,
+        uint _tagsArea,
+        uint _tagsCategory,
+        bytes32 _ipfsHash,
+        bool _boardStatus,
+        uint _boardType
+    )
+    public
+    {
+        emit BoardCreated(
+            _self(),
+            _boardId,
+            _creator,
+            _tags,
+            _tagsArea,
+            _tagsCategory,
+            _ipfsHash,
+            _boardStatus,
+            _boardType
+        );
+    }
+
+    function emitBoardCreated(
+        uint _boardId,
+        address _creator,
+        bytes32 _invitationsMerkleRoot,
+        bytes32 _ipfsHash,
+        bool _boardStatus,
+        uint _boardType
+    )
+    public
+    {
+        emit BoardCreated(
+            _self(),
+            _boardId,
+            _creator,
+            _invitationsMerkleRoot,
+            _ipfsHash,
+            _boardStatus,
+            _boardType
+        );
+    }
+
+    function emitBoardCreated(
+        uint _boardId,
+        address _creator,
+        bytes32 _ipfsHash,
+        bool _boardStatus,
+        uint _boardType
+    )
+    public
+    {
+        emit BoardCreated(
+            _self(),
+            _boardId,
+            _creator,
+            _ipfsHash,
+            _boardStatus,
+            _boardType
+        );
+    }
+
+    function emitJobBinded(uint _boardId, uint _jobId, bool _status) public {
+        emit JobBinded(_self(), _boardId, _jobId, _status);
+    }
+
+    function emitUserBinded(uint _boardId, address _user, bool _status) public {
+        emit UserBinded(_self(), _boardId, _user, _status);
+    }
+
+    function emitBoardClosed(uint _boardId, bool _status) public {
+        emit BoardClosed(_self(), _boardId, _status);
+    }
+
+    function _emitter() internal returns (BoardControllerEmitter) {
+        return BoardControllerEmitter(getEventsHistory());
+    }
+}
+
+
+contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter, BitOps, BoardControllerEmitter {
+
+    uint constant BOARD_CONTROLLER_SCOPE = 11000;
+    uint constant BOARD_CONTROLLER_JOB_IS_ALREADY_BINDED = BOARD_CONTROLLER_SCOPE + 1;
+    uint constant BOARD_CONTROLLER_USER_IS_ALREADY_BINDED = BOARD_CONTROLLER_SCOPE + 2;
+    uint constant BOARD_CONTROLLER_USER_IS_NOT_BINDED = BOARD_CONTROLLER_SCOPE + 3;
+    uint constant BOARD_CONTROLLER_BOARD_IS_CLOSED = BOARD_CONTROLLER_SCOPE + 4;
+
+    /// @dev Defines different type of boards with specified connection rules 
+    uint constant BOARD_TYPE_OPEN = 1 << 0; /// @dev All users could connect freely
+    uint constant BOARD_TYPE_BY_SKILL_MODERATION = 1 << 1; /// @dev Only users with defined skills could join
+    uint constant BOARD_TYPE_BY_INVITATION = 1 << 2; /// @dev Only users who have an invitation could connect
+
     /// @dev Jobs Data Provider address. Read-only!
-    StorageInterface.Address jobsDataProvider;
-    StorageInterface.UInt boardsCount;
+    StorageInterface.Address private jobsDataProvider;
+    StorageInterface.UInt private boardsCount;
 
-    StorageInterface.UIntAddressMapping boardCreator;
-    StorageInterface.UIntBytes32Mapping boardIpfsHash;
+    StorageInterface.UIntAddressMapping private boardCreator;
+    StorageInterface.UIntBytes32Mapping private boardIpfsHash;
 
-    StorageInterface.UIntUIntMapping boardTagsArea;
-    StorageInterface.UIntUIntMapping boardTagsCategory;
-    StorageInterface.UIntUIntMapping boardTags;
+    StorageInterface.UIntUIntMapping private boardTagsArea;
+    StorageInterface.UIntUIntMapping private boardTagsCategory;
+    StorageInterface.UIntUIntMapping private boardTags;
 
-    StorageInterface.UIntBoolMapping boardStatus;
-    StorageInterface.UIntUIntMapping jobsBoard;
+    StorageInterface.UIntBoolMapping private boardStatus;
+    StorageInterface.UIntUIntMapping private jobsBoard;
     
     /// @dev mapping(user address => set(board ids))
     StorageInterface.UIntSetMapping userBoards;
     /// @dev mapping(board id => set(job ids))
-    StorageInterface.UIntSetMapping boundJobsInBoard;
+    StorageInterface.UIntSetMapping private boundJobsInBoard;
 
+    /// @dev Mapping for boardId => board type
+    StorageInterface.UIntUIntMapping private boardType;
+
+    /// @dev Only for boards with BOARD_TYPE_BY_INVITATION type.
+    ///     Stores merkle root of invited addresses and should be updated
+    ///     when new invitations will be sent.
+    StorageInterface.UIntBytes32Mapping private boardInvitationsMerkleRoot;
+
+    /// @dev Specifies contract version that is accessible for user info.
+    ///     NOTE: Should be bumped by developers in case of smart contract modifications.
     string public version = "v0.0.1";
 
     modifier notBindedJobYet(uint _boardId, uint _jobId) {
@@ -126,19 +245,32 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         
         userBoards.init("userBoards");
         boundJobsInBoard.init("boundJobsInBoard");
+
+        boardType.init("boardType");
+        boardInvitationsMerkleRoot.init("boardInvitationsMerkleRoot");
     }
 
-    function setJobsDataProvider(address _jobsDataProvider) auth external returns (uint) {
+    function setJobsDataProvider(address _jobsDataProvider) 
+    external 
+    auth 
+    returns (uint) 
+    {
         store.set(jobsDataProvider, _jobsDataProvider);
         return OK;
     }
 
-    function setupEventsHistory(address _eventsHistory) auth external returns (uint) {
-        require(_eventsHistory != 0x0);
+    function setupEventsHistory(address _eventsHistory) 
+    external 
+    auth 
+    returns (uint) 
+    {
+        require(_eventsHistory != 0x0, "BOARD_CONTROLLER_INVALID_EVENTSHISTORY_ADDRESS");
 
         _setEventsHistory(_eventsHistory);
         return OK;
     }
+
+    /** GETTERS */
 
     function getBoardsCount() public view returns (uint) {
         return store.get(boardsCount);
@@ -289,43 +421,107 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         }
     }
 
+    /** BOARD CREATION */
+
+    /// @notice Creates a new board with type BOARD_TYPE_BY_SKILL_MODERATION.
+    ///     This board will require to have specified skills to be connected to.
+    /// @dev Ony for authorized calls.
+    /// @param _tags set of skills in terms of area
+    /// @param _tagsArea definite area in terms of category
+    /// @param _tags definite category
     function createBoard(
         uint _tags,
         uint _tagsArea,
         uint _tagsCategory,
         bytes32 _ipfsHash
     )
+    external
     auth
     singleOddFlag(_tagsArea)
     singleOddFlag(_tagsCategory)
     hasFlags(_tags)
-    external
     returns (uint)
     {
         uint boardId = store.get(boardsCount) + 1;
         store.set(boardsCount, boardId);
         store.set(boardCreator, boardId, msg.sender);
+        store.set(boardType, boardId, BOARD_TYPE_BY_SKILL_MODERATION);
         store.set(boardTagsArea, boardId, _tagsArea);
         store.set(boardTagsCategory, boardId, _tagsCategory);
         store.set(boardTags, boardId, _tags);
         store.set(boardStatus, boardId, true);
         store.set(boardIpfsHash, boardId, _ipfsHash);
-        _emitBoardCreated(boardId, msg.sender, _tags, _tagsArea, _tagsCategory, _ipfsHash, true);
+
+        _emitter().emitBoardCreated(boardId, msg.sender, _tags, _tagsArea, _tagsCategory, _ipfsHash, true, BOARD_TYPE_BY_SKILL_MODERATION);
         return OK;
     }
+
+    /// @notice Creates a new board with type BOARD_TYPE_BY_INVITATION.
+    ///     This board could be connected ONLY by invitation.
+    ///     Use Merkle root and merkle proof to connect to a board.
+    /// @dev Ony for authorized calls.
+    /// @param _invitationsMerkleRoot merkle root hash calculated from a list of
+    ///                                invited addresses
+    /// @param _ipfsHash hash of board description record in IPFS
+    function createBoardByInvitations( // TODO: alesanro rename to overloaded `createBoard` method after fixes in web3
+        bytes32 _invitationsMerkleRoot,
+        bytes32 _ipfsHash
+    )
+    external
+    auth
+    returns (uint)
+    {
+        uint boardId = store.get(boardsCount) + 1;
+        store.set(boardsCount, boardId);
+        store.set(boardCreator, boardId, msg.sender);
+        store.set(boardType, boardId, BOARD_TYPE_BY_INVITATION);
+        store.set(boardStatus, boardId, true);
+        store.set(boardIpfsHash, boardId, _ipfsHash);
+        store.set(boardInvitationsMerkleRoot, boardId, _invitationsMerkleRoot);
+
+        _emitter().emitBoardCreated(boardId, msg.sender, _invitationsMerkleRoot, _ipfsHash, true, BOARD_TYPE_BY_INVITATION);
+        return OK;
+    }
+
+    /// @notice Creates a new board with type BOARD_TYPE_OPEN. 
+    ///     This board could be connected by anyone 
+    ///     without any restrictions and validations.
+    /// @dev Emits BoardCreated event.
+    /// @dev Ony for authorized calls.
+    /// @param _ipfsHash hash of board description record in IPFS
+    function createBoardWithoutRestrictions( // TODO: alesanro rename to overloaded `createBoard` method after fixes in web3
+        bytes32 _ipfsHash
+    )
+    external
+    auth
+    returns (uint)
+    {
+        uint boardId = store.get(boardsCount) + 1;
+        store.set(boardsCount, boardId);
+        store.set(boardCreator, boardId, msg.sender);
+        store.set(boardType, boardId, BOARD_TYPE_OPEN);
+        store.set(boardStatus, boardId, true);
+        store.set(boardIpfsHash, boardId, _ipfsHash);
+
+        _emitter().emitBoardCreated(boardId, msg.sender, _ipfsHash, true, BOARD_TYPE_OPEN);
+        return OK;
+    }
+
+    /** BOARD BINDING */
 
     function bindJobWithBoard(
         uint _boardId,
         uint _jobId
     )
+    public
+    auth
     notBindedJobYet(_boardId, _jobId)
     notClosed(_boardId)
-    public
     returns (uint)
     {
         store.set(jobsBoard, _jobId, _boardId);
         store.add(boundJobsInBoard, bytes32(_boardId), _jobId);
-        _emitJobBinded(_boardId, _jobId, true);
+        _emitter().emitJobBinded(_boardId, _jobId, true);
         return OK;
     }
 
@@ -333,13 +529,13 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         uint _boardId,
         address _user
     )
+    public
     notBindedUserYet(_boardId, _user)
     notClosed(_boardId)
-    public
     returns (uint)
     {
         store.add(userBoards, bytes32(_user), _boardId);
-        _emitUserBinded(_boardId, _user, true);
+        _emitter().emitUserBinded(_boardId, _user, true);
         return OK;
     }
 
@@ -347,96 +543,25 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         uint _boardId,
         address _user
     )
-    onlyBoundUser(_boardId, _user)
     public 
+    onlyBoundUser(_boardId, _user)
     returns (uint) 
     {
         store.remove(userBoards, bytes32(_user), _boardId);
-        _emitUserBinded(_boardId, _user, false);
+        _emitter().emitUserBinded(_boardId, _user, false);
         return OK;
     }
 
     function closeBoard(
         uint _boardId
     )
+    external
     auth
     notClosed(_boardId)
-    external
     returns (uint)
     {
         store.set(boardStatus, _boardId, false);
-        _emitBoardClosed(_boardId, false);
+        _emitter().emitBoardClosed(_boardId, false);
         return OK;
-    }
-
-    function _emitBoardCreated(
-        uint _boardId,
-        address _creator,
-        uint _tags,
-        uint _tagsArea,
-        uint _tagsCategory,
-        bytes32 _ipfsHash,
-        bool _boardStatus
-    )
-    internal
-    {
-        BoardController(getEventsHistory()).emitBoardCreated(
-            _boardId,
-            _creator,
-            _tags,
-            _tagsArea,
-            _tagsCategory,
-            _ipfsHash,
-            _boardStatus
-        );
-    }
-
-    function emitBoardCreated(
-        uint _boardId,
-        address _creator,
-        uint _tags,
-        uint _tagsArea,
-        uint _tagsCategory,
-        bytes32 _ipfsHash,
-        bool _boardStatus
-    )
-    public
-    {
-        emit BoardCreated(
-            _self(),
-            _boardId,
-            _creator,
-            _tags,
-            _tagsArea,
-            _tagsCategory,
-            _ipfsHash,
-            _boardStatus
-        );
-    }
-
-    function emitJobBinded(uint _boardId, uint _jobId, bool _status) public {
-        emit JobBinded(_self(), _boardId, _jobId, _status);
-    }
-
-    function emitUserBinded(uint _boardId, address _user, bool _status) public {
-        emit UserBinded(_self(), _boardId, _user, _status);
-    }
-
-    function emitBoardClosed(uint _boardId, bool _status) public {
-        emit BoardClosed(_self(), _boardId, _status);
-    }
-
-    /* INTERNAL */
-
-    function _emitJobBinded(uint _boardId, uint _jobId, bool _status) internal {
-        BoardController(getEventsHistory()).emitJobBinded(_boardId, _jobId, _status);
-    }
-
-    function _emitUserBinded(uint _boardId, address _user, bool _status) internal {
-        BoardController(getEventsHistory()).emitUserBinded(_boardId, _user, _status);
-    }
-
-    function _emitBoardClosed(uint _boardId, bool _status) internal {
-        BoardController(getEventsHistory()).emitBoardClosed(_boardId, _status);
     }
 }
