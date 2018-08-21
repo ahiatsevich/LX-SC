@@ -68,7 +68,7 @@ contract('JobController', function(accounts) {
     FINALIZED: 2**8,
   }
 
-  const JOBS_RESULT_OFFSET = 22
+  const JOBS_RESULT_OFFSET = 23
   const ADDITIONAL_TIME_REQUESTED_IDX = 21
 
   const jobDefaultPaySize = 90;
