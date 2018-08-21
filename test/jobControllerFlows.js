@@ -283,7 +283,6 @@ contract("JobController workflows", accounts => {
 				assert.equal(log.skills.toString(), skills);
 				assert.equal(log.defaultPay.toString(), jobDefaultPaySize.toString())
 				assert.equal(log.detailsIPFSHash, await contracts.mock.convertToBytes32.call(jobDetailsIPFSHash))
-				assert.equal(log.bindStatus, false)
 			})
 		}
 
