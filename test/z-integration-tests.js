@@ -38,7 +38,8 @@ contract('Integration tests (user stories)', (accounts) => {
         moderator: 77,
         worker: 33,
         client: 18,
-        validator: 4
+        validator: 4,
+        job_binder: 98,
     }
 
     const tmFlow = web3.toBigNumber(2).pow(255).add(1) /// WORKFLOW_TM + CONFIRMATION
@@ -145,7 +146,7 @@ contract('Integration tests (user stories)', (accounts) => {
     }
 
     const bindJobWithBoard = async (_boardId, _jobId) => {
-        await contracts.boardController.bindJobWithBoard(_boardId, _jobId)
+        await contracts.boardController.bindJobWithBoard(_boardId, _jobId, { from: users.moderator, })
         let jobsBoardId = await contracts.boardController.getJobsBoard.call(_jobId)
         assert.notEqual(jobsBoardId, 0)
         assert.equal(jobsBoardId, _jobId)
@@ -157,7 +158,7 @@ contract('Integration tests (user stories)', (accounts) => {
     }
 
     const bindWorkerWithBoard = async (_user, _boardId) => {
-        await contracts.boardController.bindUserWithBoard(_boardId, _user)
+        await contracts.boardController.bindUserWithBoard(_boardId, _user, { from: users.moderator, })
         let status = await contracts.boardController.getUserStatus.call(_boardId, _user)
         assert.isTrue(status)
     }
@@ -200,9 +201,20 @@ contract('Integration tests (user stories)', (accounts) => {
 
         const createBoardData = contracts.boardController.contract.createBoard.getData(0,0,0,0).slice(0,10)
         const closeBoardData = contracts.boardController.contract.closeBoard.getData(0).slice(0,10)
+        const bindUserWithBoardData = contracts.boardController.contract.bindUserWithBoard.getData(0, 0).slice(0,10);
+        const bindUserWithBoardByInvitationData = contracts.boardController.contract.bindUserWithBoardByInvitation.getData(0, 0x0, []).slice(0,10);
+        const unbindUserFromBoardData = contracts.boardController.contract.unbindUserFromBoard.getData(0, 0x0).slice(0,10);
+
+        const bindJobData = contracts.boardController.contract.bindJobWithBoard.getData(0, 0).slice(0,10)
+
         await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.boardController.address, createBoardData, { from: users.contractOwner })
         await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.boardController.address, closeBoardData, { from: users.contractOwner })
+        await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.boardController.address, bindUserWithBoardData, { from: users.contractOwner })
+        await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.boardController.address, bindUserWithBoardByInvitationData, { from: users.contractOwner })
+        await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.boardController.address, unbindUserFromBoardData, { from: users.contractOwner })
+        await contracts.rolesLibrary.addRoleCapability(roles.job_binder, contracts.boardController.address, bindJobData, { from: users.contractOwner })
         await contracts.rolesLibrary.addUserRole(users.moderator, roles.moderator, { from: users.root })
+        await contracts.rolesLibrary.addUserRole(users.moderator, roles.job_binder, { from: users.root })
 
         await reverter.snapshot()
     })
