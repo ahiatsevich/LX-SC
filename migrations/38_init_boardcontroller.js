@@ -1,22 +1,28 @@
 "use strict";
 const BoardController = artifacts.require('./BoardController.sol');
-const Roles2Library = artifacts.require('./Roles2Library.sol');
 const StorageManager = artifacts.require('./StorageManager.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const JobController = artifacts.require('JobController')
 const JobsDataProvider = artifacts.require('JobsDataProvider')
+const UserLibrary = artifacts.require('UserLibrary')
 
 module.exports = deployer => {
-    deployer
-    .then(() => BoardController.deployed())
-    .then(boardController => boardController.setupEventsHistory(MultiEventsHistory.address))
-    .then(() => MultiEventsHistory.deployed())
-    .then(multiEventsHistory => multiEventsHistory.authorize(BoardController.address))
-    .then(() => StorageManager.deployed())
-    .then(storageManager => storageManager.giveAccess(BoardController.address, 'BoardController'))
-    .then(() => BoardController.deployed())
-    .then(boardController => boardController.setJobsDataProvider(JobsDataProvider.address))
-    .then(() => JobController.deployed())
-    .then(jobController => jobController.setBoardController(BoardController.address)) // setup board controller accessor
-    .then(() => console.log("[Migration] BoardController #initialized"))
+    deployer.then(async () => {
+        const multiEventsHistory = await MultiEventsHistory.deployed()
+        const storageManager = await StorageManager.deployed()
+        const boardController = await BoardController.deployed()
+
+        await storageManager.giveAccess(boardController.address, 'BoardController')
+
+        await boardController.setupEventsHistory(multiEventsHistory.address)
+        await multiEventsHistory.authorize(BoardController.address)
+
+        await boardController.setJobsDataProvider(JobsDataProvider.address)
+        await boardController.setUserLibrary(UserLibrary.address)
+
+        const jobController = await JobController.deployed()
+        await jobController.setBoardController(boardController.address)
+
+        console.log("[Migration] BoardController #initialized")
+    })
 };
