@@ -88,8 +88,6 @@ contract JobDataCore is StorageAdapter, BitOps {
     /// @dev mapping(posted offer job id => mapping(worker => post date))
     StorageInterface.UIntAddressUIntMapping jobOfferPostedAt;
 
-    StorageInterface.UIntBoolMapping bindStatus;
-
     // At which state job has been marked as FINALIZED
     StorageInterface.UIntUIntMapping jobFinalizedAt;
 
@@ -142,8 +140,6 @@ contract JobDataCore is StorageAdapter, BitOps {
         workerJobs.init("workerJobs");
         jobOffers.init("jobOffers");
         jobOfferPostedAt.init("jobOfferPostedAt");
-
-        bindStatus.init("bindStatus");
             
         return OK;
     }

@@ -13,8 +13,8 @@ import "./base/BitOps.sol";
 import "./JobDataCore.sol";
 
 
-contract UserLibraryInterface {
-    function hasSkills(address _user, uint _area, uint _category, uint _skills) public view returns (bool);
+interface BoardControllerBinderInterface {
+    function bindJobWithBoard(uint _boardId, uint _jobId) external returns (uint);
 }
 
 
@@ -40,7 +40,7 @@ interface PaymentProcessorInterface {
 
 contract JobControllerEmitter is MultiEventsHistoryAdapter {
 
-    event JobPosted(address indexed self, uint indexed jobId, bytes32 flowType, address client, uint skillsArea, uint skillsCategory, uint skills, uint defaultPay, bytes32 detailsIPFSHash, bool bindStatus);
+    event JobPosted(address indexed self, uint indexed jobId, bytes32 flowType, address client, uint skillsArea, uint skillsCategory, uint skills, uint defaultPay, bytes32 detailsIPFSHash);
     event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint rate, uint estimate, uint ontop);
     event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint price);
     event JobOfferAccepted(address indexed self, uint indexed jobId, address worker);
@@ -71,12 +71,11 @@ contract JobControllerEmitter is MultiEventsHistoryAdapter {
         uint _skillsCategory,
         uint _skills,
         uint _defaultPay,
-        bytes32 _detailsIPFSHash,
-        bool _bindStatus
+        bytes32 _detailsIPFSHash
     )
     public
     {
-        emit JobPosted(_self(), _jobId, bytes32(_flowType), _client, _skillsArea, _skillsCategory, _skills, _defaultPay, _detailsIPFSHash, _bindStatus);
+        emit JobPosted(_self(), _jobId, bytes32(_flowType), _client, _skillsArea, _skillsCategory, _skills, _defaultPay, _detailsIPFSHash);
     }
 
     function emitJobOfferPosted(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) public {
@@ -293,7 +292,8 @@ contract JobController is JobDataCore, Roles2LibraryAdapter, JobControllerEmitte
         return OK;
     }
 
-    /// @notice Sets contract address that satisfies BoardControllerAccessor interface
+    /// @notice Sets contract address that satisfies:
+    ///     BoardControllerAccessor and BoardControllerBinderInterface interfaces.
     function setBoardController(address _boardController) auth external returns (uint) {
         store.set(boardController, _boardController);
         return OK;
@@ -429,17 +429,40 @@ contract JobController is JobDataCore, Roles2LibraryAdapter, JobControllerEmitte
         uint _category,
         uint _skills,
         uint _defaultPay,
-        bytes32 _detailsIPFSHash
+        bytes32 _detailsIPFSHash,
+        uint _boardId
     )
+    public
     onlyValidWorkflow(_flowType)
     singleOddFlag(_area)
     singleOddFlag(_category)
     hasFlags(_skills)
-    public
+    returns (uint)
+    {
+        return _postJob(
+            _flowType,
+            _area,
+            _category,
+            _skills,
+            _defaultPay,
+            _detailsIPFSHash,
+            _boardId
+        );
+    }
+
+    function _postJob(
+        uint _flowType,
+        uint _area,
+        uint _category,
+        uint _skills,
+        uint _defaultPay,
+        bytes32 _detailsIPFSHash,
+        uint _boardId
+    )
+    private
     returns (uint)
     {
         uint jobId = store.get(jobsCount) + 1;
-        store.set(bindStatus, jobId, false);
         store.set(jobsCount, jobId);
         store.set(jobCreatedAt, jobId, now);
         store.set(jobState, jobId, JOB_STATE_CREATED);
@@ -452,7 +475,12 @@ contract JobController is JobDataCore, Roles2LibraryAdapter, JobControllerEmitte
         store.set(jobDetailsIPFSHash, jobId, _detailsIPFSHash);
         store.add(clientJobs, bytes32(msg.sender), jobId);
 
-        _emitter().emitJobPosted(jobId, _flowType, msg.sender, _area, _category, _skills, _defaultPay, _detailsIPFSHash, false);
+        require(
+            OK == BoardControllerBinderInterface(store.get(boardController)).bindJobWithBoard(_boardId, jobId),
+            "JOB_CONTROLLER_CANNOT_BIND_JOB_WITH_BOARD"
+        );
+
+        _emitter().emitJobPosted(jobId, _flowType, msg.sender, _area, _category, _skills, _defaultPay, _detailsIPFSHash);
         return OK;
     }
 
