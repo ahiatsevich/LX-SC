@@ -66,6 +66,7 @@ contract JobDataCore is StorageAdapter, BitOps {
     StorageInterface.UIntBoolMapping jobPaused;
     StorageInterface.UIntUIntMapping jobPausedAt;
     StorageInterface.UIntUIntMapping jobPausedFor;
+    StorageInterface.UIntUIntMapping jobDeadline; // block number before which work should be done
 
     /// @dev Workflow type for a job
     StorageInterface.UIntUIntMapping jobWorkflowType;  // jobId => workflow type
@@ -126,6 +127,7 @@ contract JobDataCore is StorageAdapter, BitOps {
         jobPaused.init("jobPaused");
         jobPausedAt.init("jobPausedAt");
         jobPausedFor.init("jobPausedFor");
+        jobDeadline.init("jobDeadline");
 
         jobWorkflowType.init("jobWorkflowType");
         jobRequestedAdditionalTime.init("jobRequestedTime");

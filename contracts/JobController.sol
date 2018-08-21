@@ -423,6 +423,8 @@ contract JobController is JobDataCore, Roles2LibraryAdapter, JobControllerEmitte
 
     /// @notice Creates and posts a new job to a job marketplace
     /// @param _flowType see WorkflowType
+    /// @param _deadline in ethereum block number; should be calculated according to block rate
+    ///     defines when work should be done, otherwise dispute could be opened
     function postJob(
         uint _flowType,
         uint _area,
@@ -430,6 +432,7 @@ contract JobController is JobDataCore, Roles2LibraryAdapter, JobControllerEmitte
         uint _skills,
         uint _defaultPay,
         bytes32 _detailsIPFSHash,
+        uint _deadline,
         uint _boardId
     )
     public
@@ -439,6 +442,8 @@ contract JobController is JobDataCore, Roles2LibraryAdapter, JobControllerEmitte
     hasFlags(_skills)
     returns (uint)
     {
+        require(_deadline > block.number, "JOB_CONTROLLER_INVALID_DEADLINE_BLOCK");
+
         return _postJob(
             _flowType,
             _area,
@@ -446,6 +451,7 @@ contract JobController is JobDataCore, Roles2LibraryAdapter, JobControllerEmitte
             _skills,
             _defaultPay,
             _detailsIPFSHash,
+            _deadline,
             _boardId
         );
     }
@@ -457,6 +463,7 @@ contract JobController is JobDataCore, Roles2LibraryAdapter, JobControllerEmitte
         uint _skills,
         uint _defaultPay,
         bytes32 _detailsIPFSHash,
+        uint _deadline,
         uint _boardId
     )
     private
@@ -473,6 +480,7 @@ contract JobController is JobDataCore, Roles2LibraryAdapter, JobControllerEmitte
         store.set(jobSkills, jobId, _skills);
         store.set(jobDefaultPay, jobId, _defaultPay);
         store.set(jobDetailsIPFSHash, jobId, _detailsIPFSHash);
+        store.set(jobDeadline, jobId, _deadline);
         store.add(clientJobs, bytes32(msg.sender), jobId);
 
         require(
