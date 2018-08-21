@@ -143,6 +143,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     uint constant BOARD_CONTROLLER_BOARD_IS_CLOSED = BOARD_CONTROLLER_SCOPE + 4;
     uint constant BOARD_CONTROLLER_PROOF_NOT_VERIFIED = BOARD_CONTROLLER_SCOPE + 5;
     uint constant BOARD_CONTROLLER_INVALID_BOARD_TYPE = BOARD_CONTROLLER_SCOPE + 6;
+    uint constant BOARD_CONTROLLER_NOT_SUITABLE_BOARD_FOR_JOB = BOARD_CONTROLLER_SCOPE + 7;
 
     /// @dev Defines different type of boards with specified connection rules 
     uint constant BOARD_TYPE_OPEN = 1 << 0; /// @dev All users could connect freely
@@ -240,6 +241,20 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     modifier onlyBoardCreator(uint _boardId) {
         if (msg.sender != store.get(boardCreator, _boardId)) {
             uint _resultCode = _emitErrorCode(BOARD_CONTROLLER_INVALID_BOARD_TYPE);
+            assembly {
+                mstore(0, _resultCode)
+                return(0, 32)
+            }
+        }
+        _;
+    }
+
+    modifier onlyJobWithMetRequirements(uint _boardId, uint _jobId) {
+        uint _boardType = store.get(boardType, _boardId);
+        if (_boardType == BOARD_TYPE_BY_SKILL_MODERATION &&
+            !_isJobHaveAppropriateRequirements(_boardId, _jobId)
+        ) {
+            uint _resultCode = _emitErrorCode(BOARD_CONTROLLER_NOT_SUITABLE_BOARD_FOR_JOB);
             assembly {
                 mstore(0, _resultCode)
                 return(0, 32)
@@ -566,7 +581,15 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
 
     /** BOARD BINDING */
 
-    /// @notice TODO:
+    /// @notice Binds job `_jobId` with board `_boardId`.
+    ///     Job should met requirements of the board according to category, area
+    ///     and skills, otherwise it couldn't be bound.
+    ///     Board should not be closed to successfully bind with the board.
+    ///     Job should not be bound to any board before.
+    /// @dev Only for authorized calls.
+    /// @dev Emits UserBinded event (with 'true' bind status).
+    /// @param _boardId board identifier which will be used for binding
+    /// @param _jobId job identifier that will be bound to the board.
     function bindJobWithBoard(
         uint _boardId,
         uint _jobId
@@ -575,6 +598,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     auth
     notClosed(_boardId)
     notBindedJobYet(_boardId, _jobId)
+    onlyJobWithMetRequirements(_boardId, _jobId)
     returns (uint)
     {
         store.set(jobsBoard, _jobId, _boardId);
@@ -592,6 +616,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     ///     - in case of BOARD_TYPE_BY_SKILL_MODERATION type user's skill check
     ///     and appropriance of user will be validated.
     ///     Board should not be closed to successfully bind with the board.
+    ///     Job should not be bound to any board before.
     /// @dev It checks according to user's skills held in UserLibrary.
     ///     Changes will come soon (migration to merkle proof approach).
     /// @dev Only for authorized calls.
@@ -784,5 +809,16 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
             store.get(boardTagsArea, _boardId),
             store.get(boardTagsCategory, _boardId)
         );
+    }
+
+    function _isJobHaveAppropriateRequirements(uint _boardId, uint _jobId)
+    private
+    view
+    returns (bool)
+    {
+        JobsDataProvider _jobsDataProvider = JobsDataProvider(store.get(jobsDataProvider));
+        return store.get(boardTagsCategory, _boardId) == _jobsDataProvider.getJobSkillsCategory(_jobId) &&
+            store.get(boardTagsArea, _boardId) == _jobsDataProvider.getJobSkillsArea(_jobId) &&
+            store.get(boardTags, _boardId) == _jobsDataProvider.getJobSkills(_jobId);
     }
 }
