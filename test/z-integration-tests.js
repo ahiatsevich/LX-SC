@@ -146,6 +146,8 @@ contract('Integration tests (user stories)', (accounts) => {
     }
 
     const bindJobWithBoard = async (_boardId, _jobId) => {
+        // TODO: alesanro rework flow of binding job with board and job posting
+        
         await contracts.boardController.bindJobWithBoard(_boardId, _jobId, { from: users.moderator, })
         let jobsBoardId = await contracts.boardController.getJobsBoard.call(_jobId)
         assert.notEqual(jobsBoardId, 0)
@@ -327,6 +329,8 @@ contract('Integration tests (user stories)', (accounts) => {
     context.skip("as a validator TODO", () => { })
 
     context('as a client', () => {
+
+        // TODO: alesanro rework flow of binding job with board and job posting
 
         describe("I want to wait for offers and", () => {
             const workers = [users.worker, users.worker2]
@@ -651,6 +655,8 @@ contract('Integration tests (user stories)', (accounts) => {
     })
 
     context('as a worker', async () => {
+
+        // TODO: alesanro rework flow of binding job with board and job posting
 
         describe("I want to find a job and make an offer", async () => {
             let workerExpertise
