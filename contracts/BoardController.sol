@@ -9,7 +9,9 @@ pragma solidity ^0.4.21;
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
 import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
 import "solidity-eventshistory-lib/contracts/MultiEventsHistoryAdapter.sol";
+import "openzeppelin-solidity/contracts/MerkleProof.sol";
 import "./base/BitOps.sol";
+import "./UserLibrary.sol";
 import "./JobsDataProvider.sol";
 
 
@@ -136,8 +138,11 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     uint constant BOARD_CONTROLLER_SCOPE = 11000;
     uint constant BOARD_CONTROLLER_JOB_IS_ALREADY_BINDED = BOARD_CONTROLLER_SCOPE + 1;
     uint constant BOARD_CONTROLLER_USER_IS_ALREADY_BINDED = BOARD_CONTROLLER_SCOPE + 2;
+    uint constant BOARD_CONTROLLER_USER_HAS_INCOMPLETE_SKILLS = BOARD_CONTROLLER_SCOPE + 2;
     uint constant BOARD_CONTROLLER_USER_IS_NOT_BINDED = BOARD_CONTROLLER_SCOPE + 3;
     uint constant BOARD_CONTROLLER_BOARD_IS_CLOSED = BOARD_CONTROLLER_SCOPE + 4;
+    uint constant BOARD_CONTROLLER_PROOF_NOT_VERIFIED = BOARD_CONTROLLER_SCOPE + 5;
+    uint constant BOARD_CONTROLLER_INVALID_BOARD_TYPE = BOARD_CONTROLLER_SCOPE + 6;
 
     /// @dev Defines different type of boards with specified connection rules 
     uint constant BOARD_TYPE_OPEN = 1 << 0; /// @dev All users could connect freely
@@ -146,6 +151,8 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
 
     /// @dev Jobs Data Provider address. Read-only!
     StorageInterface.Address private jobsDataProvider;
+    /// @dev UserLibrary reference
+    StorageInterface.Address private userLibrary;
     StorageInterface.UInt private boardsCount;
 
     StorageInterface.UIntAddressMapping private boardCreator;
@@ -219,6 +226,28 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         _;
     }
 
+    modifier onlyForBoardOfTypes(uint _boardId, uint _boardTypes) {
+        if (store.get(boardType, _boardId) & _boardTypes == 0) {
+            uint _resultCode = _emitErrorCode(BOARD_CONTROLLER_INVALID_BOARD_TYPE);
+            assembly {
+                mstore(0, _resultCode)
+                return(0, 32)
+            }
+        }
+        _;
+    }
+
+    modifier onlyBoardCreator(uint _boardId) {
+        if (msg.sender != store.get(boardCreator, _boardId)) {
+            uint _resultCode = _emitErrorCode(BOARD_CONTROLLER_INVALID_BOARD_TYPE);
+            assembly {
+                mstore(0, _resultCode)
+                return(0, 32)
+            }
+        }
+        _;
+    }
+
     constructor(
         Storage _store,
         bytes32 _crate,
@@ -229,7 +258,8 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     public
     {
         jobsDataProvider.init("jobsDataProvider");
-        
+        userLibrary.init("userLibrary");
+
         boardsCount.init("boardsCount");
 
         boardCreator.init("boardCreator");
@@ -250,12 +280,23 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         boardInvitationsMerkleRoot.init("boardInvitationsMerkleRoot");
     }
 
+    /// @notice Sets address of JobsDataProvider
     function setJobsDataProvider(address _jobsDataProvider) 
     external 
     auth 
     returns (uint) 
     {
         store.set(jobsDataProvider, _jobsDataProvider);
+        return OK;
+    }
+
+    /// @notice Sets address of UserLibrary
+    function setUserLibrary(address _userLibrary) 
+    external 
+    auth 
+    returns (uint) 
+    {
+        store.set(userLibrary, _userLibrary);
         return OK;
     }
 
@@ -267,6 +308,23 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         require(_eventsHistory != 0x0, "BOARD_CONTROLLER_INVALID_EVENTSHISTORY_ADDRESS");
 
         _setEventsHistory(_eventsHistory);
+        return OK;
+    }
+
+    /// @notice Updates invitations merkle root `_invitationsRoot` in board `_boardId`
+    ///     for cases when more invites were sent to users from board creator.
+    ///     Only for boards with type BOARD_TYPE_BY_INVITATION.
+    /// @dev Only by board creator caller.
+    /// @param _boardId board identifier
+    /// @param _invitationsRoot merkle root of invites list
+    function updateInvitationsMerkleRoot(uint _boardId, bytes32 _invitationsRoot)
+    external
+    onlyBoardCreator(_boardId)
+    notClosed(_boardId)
+    onlyForBoardOfTypes(_boardId, BOARD_TYPE_BY_INVITATION)
+    returns (uint)
+    {
+        store.set(boardInvitationsMerkleRoot, _boardId, _invitationsRoot);
         return OK;
     }
 
@@ -349,9 +407,8 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         }
     }
 
-    /// @notice Gets filtered boards for bound user 
-    /// where boards have provided properties (tags, 
-    /// tags area, tags category)
+    /// @notice Gets filtered boards for bound user where boards have provided
+    ///     properties (tags, tags area, tags category)
     function getBoardsForUser(
         address _user, 
         uint _tags, 
@@ -394,7 +451,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     }
 
     /// @notice Gets jobs ids that a binded with a provided board
-    /// in a paginated way
+    ///     in a paginated way
     function getJobsInBoard(
         uint _boardId, 
         uint _jobState, 
@@ -509,41 +566,165 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
 
     /** BOARD BINDING */
 
+    /// @notice TODO:
     function bindJobWithBoard(
         uint _boardId,
         uint _jobId
     )
-    public
+    external
     auth
-    notBindedJobYet(_boardId, _jobId)
     notClosed(_boardId)
+    notBindedJobYet(_boardId, _jobId)
     returns (uint)
     {
         store.set(jobsBoard, _jobId, _boardId);
         store.add(boundJobsInBoard, bytes32(_boardId), _jobId);
+
         _emitter().emitJobBinded(_boardId, _jobId, true);
         return OK;
     }
 
+    /// @notice Binds `_user` with a board `_boardId`. 
+    ///     Suites for BOARD_TYPE_OPEN and BOARD_TYPE_BY_SKILL_MODERATION 
+    ///     board types:
+    ///     - in case if board has type BOARD_TYPE_OPEN type
+    ///     then no check will be performed. 
+    ///     - in case of BOARD_TYPE_BY_SKILL_MODERATION type user's skill check
+    ///     and appropriance of user will be validated.
+    ///     Board should not be closed to successfully bind with the board.
+    /// @dev It checks according to user's skills held in UserLibrary.
+    ///     Changes will come soon (migration to merkle proof approach).
+    /// @dev Only for authorized calls.
+    /// @dev Emits UserBinded event (with 'true' bind status).
+    /// @param _boardId board identifier which will be used for binding
+    /// @param _user user address to bind with board
     function bindUserWithBoard(
         uint _boardId,
         address _user
     )
-    public
-    notBindedUserYet(_boardId, _user)
+    external
+    auth
     notClosed(_boardId)
+    onlyForBoardOfTypes(_boardId, BOARD_TYPE_OPEN | BOARD_TYPE_BY_SKILL_MODERATION)
+    notBindedUserYet(_boardId, _user)
     returns (uint)
     {
+        return _bindUserWithBoard(_boardId, _user);
+    }
+
+    /// @dev Continuation of 'bindUserWithBoard' function but without modifiers
+    function _bindUserWithBoard(
+        uint _boardId,
+        address _user
+    )
+    private
+    returns (uint)
+    {
+        uint _boardType = store.get(boardType, _boardId);
+        if (_boardType == BOARD_TYPE_BY_SKILL_MODERATION &&
+            !_isUserHaveSkills(_boardId, _user)
+        ) {
+            return _emitErrorCode(BOARD_CONTROLLER_USER_HAS_INCOMPLETE_SKILLS);
+        }
+
         store.add(userBoards, bytes32(_user), _boardId);
+
         _emitter().emitUserBinded(_boardId, _user, true);
         return OK;
     }
 
+    /// @notice Binds `msg.sender` with a board `_boardId`. 
+    ///     Suites for BOARD_TYPE_OPEN and BOARD_TYPE_BY_SKILL_MODERATION 
+    ///     board types. In case if board has type BOARD_TYPE_OPEN type
+    ///     then no check will be performed. 
+    ///     In case of BOARD_TYPE_BY_SKILL_MODERATION type user's skill check
+    ///     and appropriance of user will be validated.
+    ///     Board should not be closed to successfully bind with the board.
+    /// @dev Emits UserBinded event (with 'true' bind status).
+    /// @param _boardId board identifier which will be used for binding
+    function bindWithBoard(
+        uint _boardId
+    )
+    external
+    returns (uint)
+    {
+        return this.bindUserWithBoard(_boardId, msg.sender);
+    }
+
+    /// @notice Binds `_user` with a board `_boardId` of type BOARD_TYPE_BY_INVITATION.
+    ///     Caller should provide `_invitationProof` proof based on list of invitees 
+    ///     that is build from Merkle tree.
+    /// @dev Emits UserBinded event (with 'true' bind status).
+    /// @dev Only for authorized calls.
+    /// @param _boardId board identifier which will be used for binding
+    /// @param _user user address to bind with board; should be included in invitees list
+    /// @param _invitationProof merkle proof array that proofs that the user is invited
+    function bindUserWithBoardByInvitation(
+        uint _boardId,
+        address _user,
+        bytes32[] _invitationProof
+    )
+    external
+    auth
+    notClosed(_boardId)
+    onlyForBoardOfTypes(_boardId, BOARD_TYPE_BY_INVITATION)
+    notBindedUserYet(_boardId, _user)
+    returns (uint)
+    {
+        return _bindUserWithBoardByInvitation(_boardId, _user, _invitationProof);
+    }
+
+    /// @dev Continuation of 'bindUserWithBoardByInvitation' function but without modifiers
+    function _bindUserWithBoardByInvitation(
+        uint _boardId,
+        address _user,
+        bytes32[] _invitationProof
+    )
+    private
+    returns (uint)
+    {
+        bool _verified = MerkleProof.verifyProof(
+            _invitationProof, 
+            store.get(boardInvitationsMerkleRoot, _boardId), 
+            keccak256(abi.encodePacked(_user))
+        );
+        if (_verified) {
+            store.add(userBoards, bytes32(_user), _boardId);
+            _emitter().emitUserBinded(_boardId, _user, true);
+            return OK;
+        }
+
+        return _emitErrorCode(BOARD_CONTROLLER_PROOF_NOT_VERIFIED);
+    }
+
+    /// @notice Binds `msg.sender` with a board `_boardId` of type BOARD_TYPE_BY_INVITATION.
+    ///     Caller should provide `_invitationProof` proof based on list of invitees 
+    ///     that is build from Merkle tree.
+    /// @dev Emits UserBinded event (with 'true' bind status).
+    /// @param _boardId board identifier which will be used for binding
+    /// @param _invitationProof merkle proof array that proofs that the user is invited
+    function bindWithBoardByInvitation(
+        uint _boardId,
+        bytes32[] _invitationProof
+    )
+    external
+    returns (uint)
+    {   
+        return this.bindUserWithBoardByInvitation(_boardId, msg.sender, _invitationProof);
+    }
+
+    /// @notice Unbind `_user` from board `_boardId`.
+    ///     General for any board type.
+    /// @dev Only for authorized calls.
+    /// @dev Emits UserBinded event (with 'false' bind status).
+    /// @param _boardId board identifier which will be used for unbinding
+    /// @param _user user address to unbind from board
     function unbindUserFromBoard(
         uint _boardId,
         address _user
     )
-    public 
+    external 
+    auth
     onlyBoundUser(_boardId, _user)
     returns (uint) 
     {
@@ -552,6 +733,24 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         return OK;
     }
 
+    /// @notice Unbind `msg.sender` from board `_boardId`.
+    ///     General for any board type.
+    /// @dev Emits UserBinded event (with 'false' bind status).
+    /// @param _boardId board identifier which will be used for unbinding
+    function unbindFromBoard(
+        uint _boardId
+    )
+    external 
+    returns (uint) 
+    {
+        return this.unbindUserFromBoard(_boardId, msg.sender);
+    }
+
+    /// @notice Closes board. After that the board `_boardId` will not
+    ///     be available for binding users and jobs
+    /// @dev Only for authorized calls.
+    /// @dev Emits BoardClosed event.
+    /// @param _boardId board identifier that will be closed
     function closeBoard(
         uint _boardId
     )
@@ -563,5 +762,27 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         store.set(boardStatus, _boardId, false);
         _emitter().emitBoardClosed(_boardId, false);
         return OK;
+    }
+
+    /** INTERNAL */
+
+    /// @dev Checks if provided user has all needed skills that 
+    ///     are associated with boards to perform any actions
+    function _isUserHaveSkills(uint _boardId, address _user)
+    private
+    view
+    returns (bool)
+    {
+        UserLibrary _userLibrary = UserLibrary(store.get(userLibrary));
+        if (address(_userLibrary) == 0x0) {
+            return false;
+        }
+
+        return !_userLibrary.hasSkills(
+            _user, 
+            store.get(boardTags, _boardId),
+            store.get(boardTagsArea, _boardId),
+            store.get(boardTagsCategory, _boardId)
+        );
     }
 }
