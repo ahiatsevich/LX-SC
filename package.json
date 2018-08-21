@@ -28,10 +28,11 @@
   "homepage": "https://github.com/ChronoBank/LX-SC#readme",
   "dependencies": {
     "abi-decoder": "^1.0.9",
-    "solidity-shared-lib": "chronobank/solidity-shared-lib#v0.2.2",
+    "openzeppelin-solidity": "1.12.0",
     "solidity-eventshistory-lib": "chronobank/solidity-eventshistory-lib#v0.1.1",
-    "solidity-storage-lib": "chronobank/solidity-storage-lib#v0.2.0",
     "solidity-roles-lib": "chronobank/solidity-roles-lib#v0.1.0",
+    "solidity-shared-lib": "chronobank/solidity-shared-lib#v0.2.2",
+    "solidity-storage-lib": "chronobank/solidity-storage-lib#v0.2.0",
     "solidity-user-lib": "chronobank/solidity-user-lib#v0.1.0",
     "truffle-hdwallet-provider": "mikefluff/truffle-hdwallet-provider#7a2eccca1ba17c235a3ef258914ca74ea5f13014"
   },
