@@ -36,16 +36,7 @@ contract BoardControllerInterface {
     function getJobsBoard(uint _jobId) public returns (uint);
 }
 
-
-contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter, BitOps {
-
-    uint constant RATING_AND_REPUTATION_SCOPE = 17000;
-    uint constant RATING_AND_REPUTATION_CANNOT_SET_RATING = RATING_AND_REPUTATION_SCOPE + 1;
-    uint constant RATING_AND_REPUTATION_RATING_IS_ALREADY_SET = RATING_AND_REPUTATION_SCOPE + 2;
-    uint constant RATING_AND_REPUTATION_INVALID_RATING = RATING_AND_REPUTATION_SCOPE + 3;
-    uint constant RATING_AND_REPUTATION_WORKER_IS_NOT_ACTIVE = RATING_AND_REPUTATION_SCOPE + 4;
-    uint constant RATING_AND_REPUTATION_INVALID_AREA_OR_CATEGORY = RATING_AND_REPUTATION_SCOPE + 5;
-    uint constant RATING_AND_REPUTATION_INVALID_EVALUATION = RATING_AND_REPUTATION_SCOPE + 6;
+contract RatingsAndReputationLibraryEmitter is MultiEventsHistoryAdapter {
 
     event UserRatingGiven(address indexed self, address indexed rater, address indexed to, uint rating);
     event JobRatingGiven(address indexed self, address indexed rater, address indexed to, uint8 rating, uint jobId);
@@ -54,6 +45,54 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     event CategoryEvaluated(address indexed self, address indexed rater, address indexed to, uint8 rating, uint area, uint category);
     event SkillEvaluated(address indexed self, address indexed rater, address indexed to, uint8 rating, uint area, uint category, uint skill);
     event BoardRatingGiven(address indexed self, address indexed rater, uint indexed to, uint8 rating);
+    event ValidationLevelChanged(address indexed self, address indexed rater, address indexed to, uint8 newValidationLevel, uint8 previousValidationLevel);
+
+    function _emitter() internal view returns (RatingsAndReputationLibraryEmitter) {
+        return RatingsAndReputationLibraryEmitter(getEventsHistory());
+    }
+
+    function emitUserRatingGiven(address _rater, address _to, uint _rating) public {
+        emit UserRatingGiven(_self(), _rater, _to, _rating);
+    }
+
+    function emitBoardRatingGiven(address _rater, uint _to, uint8 _rating) public {
+        emit BoardRatingGiven(_self(), _rater, _to, _rating);
+    }
+
+    function emitJobRatingGiven(address _rater, address _to, uint _jobId, uint8 _rating) public {
+        emit JobRatingGiven(_self(), _rater, _to, _rating, _jobId);
+    }
+
+    function emitSkillRatingGiven(address _rater, address _to, uint8 _rating, uint _area, uint _category, uint _skill, uint _jobId) public {
+        emit SkillRatingGiven(_self(), _rater, _to, _rating, _area, _category, _skill, _jobId);
+    }
+
+    function emitAreaEvaluated(address _rater, address _to, uint8 _rating, uint _area) public {
+        emit AreaEvaluated(_self(), _rater, _to, _rating, _area);
+    }
+
+    function emitCategoryEvaluated(address _rater, address _to, uint8 _rating, uint _area, uint _category) public {
+        emit CategoryEvaluated(_self(), _rater, _to, _rating, _area, _category);
+    }
+
+    function emitSkillEvaluated(address _rater, address _to, uint8 _rating, uint _area, uint _category, uint _skill) public {
+        emit SkillEvaluated(_self(), _rater, _to, _rating, _area, _category, _skill);
+    }
+
+    function emitValidationLevelChanged(address _rater, address _to, uint8 _newValidationLevel, uint8 _previousValidationLevel) public {
+        emit ValidationLevelChanged(_self(), _rater, _to, _newValidationLevel, _previousValidationLevel);
+    }
+}
+
+contract RatingsAndReputationLibrary is StorageAdapter, Roles2LibraryAdapter, BitOps, RatingsAndReputationLibraryEmitter {
+
+    uint constant RATING_AND_REPUTATION_SCOPE = 17000;
+    uint constant RATING_AND_REPUTATION_CANNOT_SET_RATING = RATING_AND_REPUTATION_SCOPE + 1;
+    uint constant RATING_AND_REPUTATION_RATING_IS_ALREADY_SET = RATING_AND_REPUTATION_SCOPE + 2;
+    uint constant RATING_AND_REPUTATION_INVALID_RATING = RATING_AND_REPUTATION_SCOPE + 3;
+    uint constant RATING_AND_REPUTATION_WORKER_IS_NOT_ACTIVE = RATING_AND_REPUTATION_SCOPE + 4;
+    uint constant RATING_AND_REPUTATION_INVALID_AREA_OR_CATEGORY = RATING_AND_REPUTATION_SCOPE + 5;
+    uint constant RATING_AND_REPUTATION_INVALID_EVALUATION = RATING_AND_REPUTATION_SCOPE + 6;
 
     /// @dev See JobDataCore#JOB_STATE constant definitions
     uint constant JOB_STATE_STARTED = 0x008;        // 00000001000
@@ -169,11 +208,12 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
 	Roles2LibraryAdapter(_roles2Library)
 	public
     {
-        jobRatingsGiven.init('jobRatingsGiven');
-        userRatingsGiven.init('userRatingsGiven');
-        skillRatingsGiven.init('skillRatingsGiven');
-        skillRatingSet.init('skillRatingSet');
-        boardRating.init('boardRating');
+        jobRatingsGiven.init("jobRatingsGiven");
+        userRatingsGiven.init("userRatingsGiven");
+        skillRatingsGiven.init("skillRatingsGiven");
+        skillRatingSet.init("skillRatingSet");
+        boardRating.init("boardRating");
+
     }
 
     function setupEventsHistory(address _eventsHistory) auth external returns (uint) {
@@ -206,7 +246,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
 
     function setUserRating(address _to, uint8 _rating) validRating(_rating) public returns (uint) {
         store.set(userRatingsGiven, msg.sender, _to, _rating);
-        _emitUserRatingGiven(msg.sender, _to, _rating);
+        _emitter().emitUserRatingGiven(msg.sender, _to, _rating);
         return OK;
     }
 
@@ -233,7 +273,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
         
 		store.set(jobRatingsGiven, _to, _jobId, msg.sender, _rating);
         
-		_emitJobRatingGiven(msg.sender, _to, _jobId, _rating);
+		_emitter().emitJobRatingGiven(msg.sender, _to, _jobId, _rating);
         return OK;
     }
 
@@ -250,7 +290,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     returns (uint) 
 	{
         store.set(boardRating, msg.sender, _to, _rating);
-        _emitBoardRatingGiven(msg.sender, _to, _rating);
+        _emitter().emitBoardRatingGiven(msg.sender, _to, _rating);
         return OK;
     }
 
@@ -309,7 +349,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
 
         store.set(skillRatingsGiven, _to, _jobId, _area, _category, _skill, msg.sender, _rating);
         store.set(skillRatingSet, _jobId, true);
-        _emitSkillRatingGiven(msg.sender, _to, _rating, _area, _category, _skill, _jobId);
+        _emitter().emitSkillRatingGiven(msg.sender, _to, _rating, _area, _category, _skill, _jobId);
     }
 
     function getSkillRating(
@@ -343,7 +383,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
 
         store.set(areasEvaluated, _to, _area, msg.sender, _rating);
 
-        _emitAreaEvaluated(msg.sender, _to, _rating, _area);
+        _emitter().emitAreaEvaluated(msg.sender, _to, _rating, _area);
         return OK;
     }
 
@@ -362,7 +402,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
 
         store.set(categoriesEvaluated, _to, _area, _category, msg.sender, _rating);
 
-        _emitCategoryEvaluated(msg.sender, _to, _rating, _area, _category);
+        _emitter().emitCategoryEvaluated(msg.sender, _to, _rating, _area, _category);
         return OK;
     }
 
@@ -381,7 +421,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
 
         store.set(skillsEvaluated, _to, _area, _category, _skill, msg.sender, _rating);
 
-        _emitSkillEvaluated(msg.sender, _to, _rating, _area, _category, _skill);
+        _emitter().emitSkillEvaluated(msg.sender, _to, _rating, _area, _category, _skill);
         return OK;
     }
 
@@ -440,62 +480,6 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
             categoriesCounter++;
         }
         return OK;
-    }
-
-    function emitUserRatingGiven(address _rater, address _to, uint _rating) public {
-        emit UserRatingGiven(_self(), _rater, _to, _rating);
-    }
-
-    function emitBoardRatingGiven(address _rater, uint _to, uint8 _rating) public {
-        emit BoardRatingGiven(_self(), _rater, _to, _rating);
-    }
-
-    function emitJobRatingGiven(address _rater, address _to, uint _jobId, uint8 _rating) public {
-        emit JobRatingGiven(_self(), _rater, _to, _rating, _jobId);
-    }
-
-    function emitSkillRatingGiven(address _rater, address _to, uint8 _rating, uint _area, uint _category, uint _skill, uint _jobId) public {
-        emit SkillRatingGiven(_self(), _rater, _to, _rating, _area, _category, _skill, _jobId);
-    }
-
-    function emitAreaEvaluated(address _rater, address _to, uint8 _rating, uint _area) public {
-        emit AreaEvaluated(_self(), _rater, _to, _rating, _area);
-    }
-
-    function emitCategoryEvaluated(address _rater, address _to, uint8 _rating, uint _area, uint _category) public {
-        emit CategoryEvaluated(_self(), _rater, _to, _rating, _area, _category);
-    }
-
-    function emitSkillEvaluated(address _rater, address _to, uint8 _rating, uint _area, uint _category, uint _skill) public {
-        emit SkillEvaluated(_self(), _rater, _to, _rating, _area, _category, _skill);
-    }
-
-    function _emitUserRatingGiven(address _rater, address _to, uint _rating) internal {
-        RatingsAndReputationLibrary(getEventsHistory()).emitUserRatingGiven(_rater, _to, _rating);
-    }
-
-    function _emitBoardRatingGiven(address _rater, uint _to, uint8 _rating) internal {
-        RatingsAndReputationLibrary(getEventsHistory()).emitBoardRatingGiven(_rater, _to, _rating);
-    }
-
-    function _emitJobRatingGiven(address _rater, address _to, uint _jobId, uint8 _rating) internal {
-        RatingsAndReputationLibrary(getEventsHistory()).emitJobRatingGiven(_rater, _to, _jobId, _rating);
-    }
-
-    function _emitSkillRatingGiven(address _rater, address _to, uint8 _rating, uint _area, uint _category, uint _skill, uint _jobId) internal {
-        RatingsAndReputationLibrary(getEventsHistory()).emitSkillRatingGiven(_rater, _to, _rating, _area, _category, _skill, _jobId);
-    }
-
-    function _emitAreaEvaluated(address _rater, address _to, uint8 _rating, uint _area) internal {
-        RatingsAndReputationLibrary(getEventsHistory()).emitAreaEvaluated(_rater, _to, _rating, _area);
-    }
-
-    function _emitCategoryEvaluated(address _rater, address _to, uint8 _rating, uint _area, uint _category) internal {
-        RatingsAndReputationLibrary(getEventsHistory()).emitCategoryEvaluated(_rater, _to, _rating, _area, _category);
-    }
-
-    function _emitSkillEvaluated(address _rater, address _to, uint8 _rating, uint _area, uint _category, uint _skill) internal {
-        RatingsAndReputationLibrary(getEventsHistory()).emitSkillEvaluated(_rater, _to, _rating, _area, _category, _skill);
     }
 
     // HELPERS
