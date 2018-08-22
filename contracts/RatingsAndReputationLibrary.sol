@@ -46,7 +46,7 @@ contract RatingsAndReputationLibraryEmitter is MultiEventsHistoryAdapter {
     event SkillEvaluated(address indexed self, address indexed rater, address indexed to, uint8 rating, uint area, uint category, uint skill);
     event BoardRatingGiven(address indexed self, address indexed rater, uint indexed to, uint8 rating);
     event ValidationLevelChanged(address indexed self, address indexed rater, address indexed to, uint8 newValidationLevel, uint8 previousValidationLevel);
-
+    
     function _emitter() internal view returns (RatingsAndReputationLibraryEmitter) {
         return RatingsAndReputationLibraryEmitter(getEventsHistory());
     }
@@ -93,10 +93,13 @@ contract RatingsAndReputationLibrary is StorageAdapter, Roles2LibraryAdapter, Bi
     uint constant RATING_AND_REPUTATION_WORKER_IS_NOT_ACTIVE = RATING_AND_REPUTATION_SCOPE + 4;
     uint constant RATING_AND_REPUTATION_INVALID_AREA_OR_CATEGORY = RATING_AND_REPUTATION_SCOPE + 5;
     uint constant RATING_AND_REPUTATION_INVALID_EVALUATION = RATING_AND_REPUTATION_SCOPE + 6;
+    uint constant RATING_AND_REPUTATION_INVALID_VALIDATION_LEVEL = RATING_AND_REPUTATION_SCOPE + 7;
 
     /// @dev See JobDataCore#JOB_STATE constant definitions
     uint constant JOB_STATE_STARTED = 0x008;        // 00000001000
     uint constant JOB_STATE_FINALIZED = 0x100;      // 00100000000
+
+    uint constant VALIDATION_LEVEL_MAX = 4;
 
     JobControllerInterface jobController;
     UserLibraryInterface userLibrary;
@@ -121,6 +124,9 @@ contract RatingsAndReputationLibrary is StorageAdapter, Roles2LibraryAdapter, Bi
     StorageInterface.AddressUIntUIntUIntAddressUInt8Mapping skillsEvaluated;
 
     StorageInterface.AddressUIntUInt8Mapping boardRating;
+
+    /// @dev Stores user and his validation level of general profile;
+    StorageInterface.AddressUIntMapping validationLevelAssigned;
 
     string public version = "v0.0.1";
 
@@ -192,11 +198,23 @@ contract RatingsAndReputationLibrary is StorageAdapter, Roles2LibraryAdapter, Bi
         _;
     }
 
+    modifier validValidationLevel(uint8 _validationLevel) {
+        if (!_validValidationLevel(_validationLevel)) {
+            _emitErrorCode(RATING_AND_REPUTATION_INVALID_VALIDATION_LEVEL);
+            assembly {
+                mstore(0, 17007) // RATING_AND_REPUTATION_INVALID_VALIDATION_LEVEL
+                return(0, 32)
+            }
+        }
+
+        _;
+    }
+
     modifier onlyBoardMember(uint _boardId, address _user) {
-      if (boardController.getUserStatus(_boardId, _user) != true) {
-        return;
-      }
-      _;
+        if (boardController.getUserStatus(_boardId, _user) != true) {
+            return;
+        }
+        _;
     }
 
     constructor(
@@ -214,6 +232,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, Roles2LibraryAdapter, Bi
         skillRatingSet.init("skillRatingSet");
         boardRating.init("boardRating");
 
+        validationLevelAssigned.init("validationLevelAssigned");
     }
 
     function setupEventsHistory(address _eventsHistory) auth external returns (uint) {
@@ -365,6 +384,32 @@ contract RatingsAndReputationLibrary is StorageAdapter, Roles2LibraryAdapter, Bi
         return store.get(skillRatingsGiven, _to, _jobId, _area, _category, _skill);
     }
 
+    // VALIDATION LEVEL
+
+    /// @notice Gets validation level for a `_user`, no matter worker, client or recrutier
+    /// @param _user user address which validation level is requested
+    function getValidationLevel(address _user) public view returns (uint8) {
+        return uint8(store.get(validationLevelAssigned, _user));
+    }
+
+    /// @notice Sets validation level of a `_user`.
+    /// @dev Emits ValidationLevelChanged event.
+    /// @dev Only for authorized calls.
+    /// @param _user user address that is presented in the system
+    /// @param _level validation level; 0-4 values are possible, 4 is MAX.
+    function setValidationLevel(address _user, uint8 _level) 
+    external 
+    auth 
+    validValidationLevel(_level) 
+    returns (uint) 
+    {
+        uint8 _previousValidationLevel = uint8(store.get(validationLevelAssigned, _user));
+        store.set(validationLevelAssigned, _user, _level);
+
+        _emitter().emitValidationLevelChanged(msg.sender, _user, _level, _previousValidationLevel);
+        return OK;
+    }
+
 
     // EVALUATIONS
 
@@ -486,5 +531,9 @@ contract RatingsAndReputationLibrary is StorageAdapter, Roles2LibraryAdapter, Bi
     
     function _validRating(uint8 _rating) internal pure returns (bool) {
         return _rating > 0 && _rating <= 10;
+    }
+
+    function _validValidationLevel(uint8 _validationLevel) private pure returns (bool) {
+        return _validationLevel <= VALIDATION_LEVEL_MAX;
     }
 }
