@@ -370,6 +370,13 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         return store.includes(userBoards, bytes32(_user), _boardId);
     }
 
+    /// @notice Gets a list of board ids for provided user `_user`
+    /// @param _user user address that could have connected boards
+    /// @return array of board identifiers that user connects with
+    function getUserBoardIds(address _user) public view returns (uint[]) {
+        return store.get(userBoards, bytes32(_user));
+    }
+
     function getJobsBoard(uint _jobId) public view returns (uint) {
         return store.get(jobsBoard, _jobId);
     }
@@ -377,6 +384,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     function getBoardIpfsHash(uint _jobId) public view returns (bytes32) {
         return store.get(boardIpfsHash, _jobId);
     }
+
 
     /// @notice Gets amount of users joined to a `_boardId` board
     /// @dev Already created boards start counting users from 0 despite they could already have users.
