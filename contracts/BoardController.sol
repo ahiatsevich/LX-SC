@@ -12,6 +12,7 @@ import "solidity-eventshistory-lib/contracts/MultiEventsHistoryAdapter.sol";
 import "openzeppelin-solidity/contracts/MerkleProof.sol";
 import "./base/BitOps.sol";
 import "./UserLibrary.sol";
+import "./libs/SafeMath.sol";
 import "./JobsDataProvider.sol";
 
 
@@ -135,6 +136,8 @@ contract BoardControllerEmitter is MultiEventsHistoryAdapter {
 
 contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter, BitOps, BoardControllerEmitter {
 
+    using SafeMath for uint;
+
     uint constant BOARD_CONTROLLER_SCOPE = 11000;
     uint constant BOARD_CONTROLLER_JOB_IS_ALREADY_BINDED = BOARD_CONTROLLER_SCOPE + 1;
     uint constant BOARD_CONTROLLER_USER_IS_ALREADY_BINDED = BOARD_CONTROLLER_SCOPE + 2;
@@ -166,8 +169,13 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     StorageInterface.UIntBoolMapping private boardStatus;
     StorageInterface.UIntUIntMapping private jobsBoard;
     
+    /// @dev Counts amount of users that joined a board; [board id => number of users]; 
+    ///     Could not migrate number of users from already created boards
+    StorageInterface.UIntUIntMapping private usersInBoardCounter;
+
     /// @dev mapping(user address => set(board ids))
     StorageInterface.UIntSetMapping userBoards;
+
     /// @dev mapping(board id => set(job ids))
     StorageInterface.UIntSetMapping private boundJobsInBoard;
 
@@ -183,7 +191,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     ///     NOTE: Should be bumped by developers in case of smart contract modifications.
     string public version = "v0.0.1";
 
-    modifier notBindedJobYet(uint _boardId, uint _jobId) {
+    modifier notBoundJobYet(uint _boardId, uint _jobId) {
         if (store.get(jobsBoard, _jobId) != 0) {
             uint _resultCode = _emitErrorCode(BOARD_CONTROLLER_JOB_IS_ALREADY_BINDED);
             assembly {
@@ -194,7 +202,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         _;
     }
 
-    modifier notBindedUserYet(uint _boardId, address _user) {
+    modifier notBoundUserYet(uint _boardId, address _user) {
         if (getUserStatus(_boardId, _user) == true) {
             uint _resultCode = _emitErrorCode(BOARD_CONTROLLER_USER_IS_ALREADY_BINDED);
             assembly {
@@ -276,6 +284,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         userLibrary.init("userLibrary");
 
         boardsCount.init("boardsCount");
+        usersInBoardCounter.init("usersInBoardCounter");
 
         boardCreator.init("boardCreator");
 
@@ -367,6 +376,13 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
 
     function getBoardIpfsHash(uint _jobId) public view returns (bytes32) {
         return store.get(boardIpfsHash, _jobId);
+    }
+
+    /// @notice Gets amount of users joined to a `_boardId` board
+    /// @dev Already created boards start counting users from 0 despite they could already have users.
+    /// @param _boardId board identifier
+    function getUsersInBoardCount(uint _boardId) public view returns (uint) {
+        return store.get(usersInBoardCounter, _boardId);
     }
 
     function getBoardsByIds(uint[] _ids)
@@ -597,7 +613,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     external
     auth
     notClosed(_boardId)
-    notBindedJobYet(_boardId, _jobId)
+    notBoundJobYet(_boardId, _jobId)
     onlyJobWithMetRequirements(_boardId, _jobId)
     returns (uint)
     {
@@ -631,7 +647,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     auth
     notClosed(_boardId)
     onlyForBoardOfTypes(_boardId, BOARD_TYPE_OPEN | BOARD_TYPE_BY_SKILL_MODERATION)
-    notBindedUserYet(_boardId, _user)
+    notBoundUserYet(_boardId, _user)
     returns (uint)
     {
         return _bindUserWithBoard(_boardId, _user);
@@ -653,6 +669,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         }
 
         store.add(userBoards, bytes32(_user), _boardId);
+        store.set(usersInBoardCounter, _boardId, getUsersInBoardCount(_boardId).add(1));
 
         _emitter().emitUserBinded(_boardId, _user, true);
         return OK;
@@ -693,7 +710,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     auth
     notClosed(_boardId)
     onlyForBoardOfTypes(_boardId, BOARD_TYPE_BY_INVITATION)
-    notBindedUserYet(_boardId, _user)
+    notBoundUserYet(_boardId, _user)
     returns (uint)
     {
         return _bindUserWithBoardByInvitation(_boardId, _user, _invitationProof);
@@ -715,6 +732,8 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         );
         if (_verified) {
             store.add(userBoards, bytes32(_user), _boardId);
+            store.set(usersInBoardCounter, _boardId, getUsersInBoardCount(_boardId).add(1));
+
             _emitter().emitUserBinded(_boardId, _user, true);
             return OK;
         }
@@ -754,6 +773,8 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     returns (uint) 
     {
         store.remove(userBoards, bytes32(_user), _boardId);
+        store.set(usersInBoardCounter, _boardId, getUsersInBoardCount(_boardId).sub(1));
+
         _emitter().emitUserBinded(_boardId, _user, false);
         return OK;
     }
@@ -785,6 +806,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     returns (uint)
     {
         store.set(boardStatus, _boardId, false);
+
         _emitter().emitBoardClosed(_boardId, false);
         return OK;
     }
